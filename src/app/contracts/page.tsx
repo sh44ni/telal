@@ -27,6 +27,7 @@ const initialFormData = {
     // Terms
     validFrom: "",
     validTo: "",
+    agreementPeriod: "",
     monthlyRent: "",
     paymentFrequency: "monthly" as PaymentFrequency,
     // Signatures
@@ -52,6 +53,7 @@ export default function ContractsPage() {
         isOpen: false,
         contract: null,
     });
+    const [deleting, setDeleting] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
 
     // Fetch contracts
@@ -143,6 +145,7 @@ export default function ContractsPage() {
                 tenantCR: contract.tenantCR || "",
                 validFrom: contract.validFrom || "",
                 validTo: contract.validTo || "",
+                agreementPeriod: contract.agreementPeriod || "",
                 monthlyRent: contract.monthlyRent?.toString() || "",
                 paymentFrequency: contract.paymentFrequency || "monthly",
                 landlordSignature: contract.landlordSignature || "",
@@ -180,6 +183,7 @@ export default function ContractsPage() {
                 tenantCR: formData.tenantCR || undefined,
                 validFrom: formData.validFrom,
                 validTo: formData.validTo,
+                agreementPeriod: formData.agreementPeriod,
                 monthlyRent: parseFloat(formData.monthlyRent) || 0,
                 paymentFrequency: formData.paymentFrequency,
                 landlordSignature: formData.landlordSignature,
@@ -252,12 +256,15 @@ export default function ContractsPage() {
 
     const handleDeleteConfirm = async () => {
         if (deleteConfirm.contract) {
+            setDeleting(true);
             try {
                 await fetch(`/api/rental-contracts/${deleteConfirm.contract.id}`, { method: "DELETE" });
                 toast.success("Contract deleted");
                 fetchContracts();
             } catch (error) {
                 toast.error("Failed to delete contract");
+            } finally {
+                setDeleting(false);
             }
         }
         setDeleteConfirm({ isOpen: false, contract: null });
@@ -323,13 +330,22 @@ export default function ContractsPage() {
                     onEdit={handleOpenModal}
                     onDelete={handleDeleteClick}
                     actions={(item) => (
-                        <button
-                            onClick={() => handleDownloadPDF(item)}
-                            className="p-1.5 hover:bg-muted transition-colors text-muted-foreground hover:text-primary"
-                            title="Download PDF"
-                        >
-                            <Download size={16} />
-                        </button>
+                        <div className="flex items-center gap-1">
+                            <button
+                                onClick={() => handleDownloadPDF(item)}
+                                className="p-1.5 hover:bg-muted transition-colors text-muted-foreground hover:text-primary"
+                                title="Download PDF"
+                            >
+                                <Download size={16} />
+                            </button>
+                            <button
+                                onClick={() => handleDeleteClick(item)}
+                                className="p-1.5 hover:bg-muted transition-colors text-muted-foreground hover:text-destructive"
+                                title="Delete"
+                            >
+                                <Trash2 size={16} />
+                            </button>
+                        </div>
                     )}
                 />
             </div>
@@ -459,6 +475,12 @@ export default function ContractsPage() {
                                     onChange={(e) => setFormData({ ...formData, validTo: e.target.value })}
                                 />
                                 <Input
+                                    label="Agreement Period / مدة العقد *"
+                                    placeholder="e.g., 1 year, 6 months"
+                                    value={formData.agreementPeriod}
+                                    onChange={(e) => setFormData({ ...formData, agreementPeriod: e.target.value })}
+                                />
+                                <Input
                                     label="Monthly Rent (OMR) / الإيجار الشهري *"
                                     type="number"
                                     step="0.001"
@@ -530,6 +552,7 @@ export default function ContractsPage() {
                 confirmText={t("common.delete")}
                 cancelText={t("common.cancel")}
                 variant="destructive"
+                loading={deleting}
             />
         </PageContainer>
     );

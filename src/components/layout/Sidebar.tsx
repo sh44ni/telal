@@ -17,6 +17,7 @@ import {
     Settings,
     ChevronLeft,
     ChevronRight,
+    X,
 } from "lucide-react";
 
 const menuItems = [
@@ -34,7 +35,7 @@ const menuItems = [
 export function Sidebar() {
     const { t } = useTranslation();
     const pathname = usePathname();
-    const { sidebarCollapsed, toggleSidebar, sidebarOpen, direction } = useAppStore();
+    const { sidebarCollapsed, toggleSidebar, sidebarOpen, direction, setSidebarOpen } = useAppStore();
 
     return (
         <>
@@ -42,7 +43,7 @@ export function Sidebar() {
             {sidebarOpen && (
                 <div
                     className="fixed inset-0 bg-black/50 z-40 md:hidden"
-                    onClick={() => useAppStore.getState().setSidebarOpen(false)}
+                    onClick={() => setSidebarOpen(false)}
                 />
             )}
 
@@ -52,21 +53,31 @@ export function Sidebar() {
                     "sidebar fixed top-0 h-screen bg-sidebar-bg text-sidebar-foreground z-50 transition-all duration-300 flex flex-col",
                     sidebarCollapsed ? "w-[70px]" : "w-[260px]",
                     direction === "rtl" ? "right-0" : "left-0",
-                    // Mobile: hidden by default, shown when sidebarOpen
-                    "max-md:-translate-x-full max-md:data-[open=true]:translate-x-0",
-                    direction === "rtl" && "max-md:translate-x-full max-md:data-[open=true]:translate-x-0"
+                    // Add 'open' class for mobile - this works with the CSS in globals.css
+                    sidebarOpen && "open"
                 )}
-                data-open={sidebarOpen}
             >
-                {/* Logo Section */}
+                {/* Logo Section with mobile close button */}
                 <div className={cn(
                     "h-[70px] flex items-center border-b border-white/10",
-                    sidebarCollapsed ? "justify-center px-2" : "px-5"
+                    sidebarCollapsed ? "justify-center px-2" : "px-5 justify-between"
                 )}>
-                    {sidebarCollapsed ? (
-                        <img src="/favicon.svg" alt="Telal" className="w-10 h-10 object-contain" />
-                    ) : (
-                        <img src="/logofordarkbg.svg" alt="Telal Al-Bidaya" className="h-10 object-contain" />
+                    <div className="flex items-center">
+                        {sidebarCollapsed ? (
+                            <img src="/favicon.svg" alt="Telal" className="w-10 h-10 object-contain" />
+                        ) : (
+                            <img src="/logofordarkbg.svg" alt="Telal Al-Bidaya" className="h-10 object-contain" />
+                        )}
+                    </div>
+                    {/* Mobile close button */}
+                    {!sidebarCollapsed && (
+                        <button
+                            onClick={() => setSidebarOpen(false)}
+                            className="md:hidden p-2 hover:bg-sidebar-hover transition-colors touch-target"
+                            aria-label="Close sidebar"
+                        >
+                            <X size={20} />
+                        </button>
                     )}
                 </div>
 
@@ -82,8 +93,14 @@ export function Sidebar() {
                                 <li key={item.key}>
                                     <Link
                                         href={item.href}
+                                        onClick={() => {
+                                            // Close sidebar on mobile after navigation
+                                            if (window.innerWidth < 768) {
+                                                setSidebarOpen(false);
+                                            }
+                                        }}
                                         className={cn(
-                                            "flex items-center gap-3 px-3 py-2.5 transition-colors",
+                                            "flex items-center gap-3 px-3 py-3 md:py-2.5 transition-colors min-h-[44px] md:min-h-0",
                                             "hover:bg-sidebar-hover",
                                             isActive && "bg-sidebar-hover text-sidebar-active border-sidebar-active",
                                             isActive && (direction === "rtl" ? "border-r-2" : "border-l-2"),

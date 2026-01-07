@@ -32,7 +32,7 @@ export function Header() {
     return (
         <header
             className={cn(
-                "fixed top-0 h-[70px] bg-card border-b border-border z-30 transition-all duration-300 flex items-center justify-between px-6",
+                "fixed top-0 h-[70px] bg-card border-b border-border z-30 transition-all duration-300 flex items-center justify-between px-3 sm:px-6",
                 "max-md:left-0 max-md:right-0"
             )}
             style={{
@@ -45,16 +45,17 @@ export function Header() {
             }}
         >
             {/* Left Section */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
                 {/* Mobile Menu Button */}
                 <button
-                    className="md:hidden p-2 hover:bg-muted transition-colors"
+                    className="md:hidden p-2.5 hover:bg-muted transition-colors touch-target"
                     onClick={() => setSidebarOpen(true)}
+                    aria-label="Open menu"
                 >
                     <Menu size={24} />
                 </button>
 
-                {/* Search */}
+                {/* Search - Hidden on mobile */}
                 <div className="hidden sm:flex items-center gap-2 bg-muted px-3 py-2 w-[300px]">
                     <Search size={18} className="text-muted-foreground" />
                     <input

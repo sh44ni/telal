@@ -21,7 +21,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                 id={id}
                 ref={ref}
                 className={cn(
-                    "flex h-10 w-full border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+                    "flex h-11 sm:h-10 w-full border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
                     error && "border-destructive focus:ring-destructive",
                     className
                 )}
@@ -234,33 +234,35 @@ interface TabsProps {
 
 export function Tabs({ tabs, activeTab, onChange }: TabsProps) {
     return (
-        <div className="flex border-b border-border">
-            {tabs.map((tab) => (
-                <button
-                    key={tab.id}
-                    onClick={() => onChange(tab.id)}
-                    className={cn(
-                        "px-4 py-3 text-sm font-medium transition-colors border-b-2 -mb-px",
-                        activeTab === tab.id
-                            ? "border-primary text-primary"
-                            : "border-transparent text-muted-foreground hover:text-foreground"
-                    )}
-                >
-                    {tab.label}
-                    {tab.count !== undefined && (
-                        <span
-                            className={cn(
-                                "ml-2 px-2 py-0.5 text-xs",
-                                activeTab === tab.id
-                                    ? "bg-primary text-primary-foreground"
-                                    : "bg-muted text-muted-foreground"
-                            )}
-                        >
-                            {tab.count}
-                        </span>
-                    )}
-                </button>
-            ))}
+        <div className="overflow-x-auto scrollbar-hide -mx-4 sm:mx-0 px-4 sm:px-0">
+            <div className="flex border-b border-border min-w-max">
+                {tabs.map((tab) => (
+                    <button
+                        key={tab.id}
+                        onClick={() => onChange(tab.id)}
+                        className={cn(
+                            "px-3 sm:px-4 py-3 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap",
+                            activeTab === tab.id
+                                ? "border-primary text-primary"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        {tab.label}
+                        {tab.count !== undefined && (
+                            <span
+                                className={cn(
+                                    "ml-1.5 sm:ml-2 px-1.5 sm:px-2 py-0.5 text-xs",
+                                    activeTab === tab.id
+                                        ? "bg-primary text-primary-foreground"
+                                        : "bg-muted text-muted-foreground"
+                                )}
+                            >
+                                {tab.count}
+                            </span>
+                        )}
+                    </button>
+                ))}
+            </div>
         </div>
     );
 }

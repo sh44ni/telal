@@ -188,21 +188,24 @@ export default function PropertiesPage() {
                 <div className="flex items-center gap-2">
                     <div className="flex border border-border">
                         <button
-                            className={`p-2 ${viewMode === "table" ? "bg-muted" : "hover:bg-muted"}`}
+                            className={`p-2.5 sm:p-2 touch-target ${viewMode === "table" ? "bg-muted" : "hover:bg-muted"}`}
                             onClick={() => setViewMode("table")}
+                            aria-label="Table view"
                         >
                             <List size={18} />
                         </button>
                         <button
-                            className={`p-2 ${viewMode === "grid" ? "bg-muted" : "hover:bg-muted"}`}
+                            className={`p-2.5 sm:p-2 touch-target ${viewMode === "grid" ? "bg-muted" : "hover:bg-muted"}`}
                             onClick={() => setViewMode("grid")}
+                            aria-label="Grid view"
                         >
                             <Grid size={18} />
                         </button>
                     </div>
                     <Button onClick={() => handleOpenModal()}>
                         <Plus size={18} />
-                        {t("properties.addProperty")}
+                        <span className="hidden sm:inline">{t("properties.addProperty")}</span>
+                        <span className="sm:hidden">Add</span>
                     </Button>
                 </div>
             }

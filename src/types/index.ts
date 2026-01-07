@@ -167,6 +167,7 @@ export interface RentalContract {
     // Contract Terms
     validFrom: string;
     validTo: string;
+    agreementPeriod: string; // e.g., "1 year", "6 months"
     monthlyRent: number;
     paymentFrequency: PaymentFrequency;
 

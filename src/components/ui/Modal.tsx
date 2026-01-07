@@ -16,11 +16,11 @@ interface ModalProps {
 }
 
 const sizeClasses = {
-    sm: "max-w-sm",
-    md: "max-w-md",
-    lg: "max-w-lg",
-    xl: "max-w-xl",
-    full: "max-w-4xl",
+    sm: "sm:max-w-sm",
+    md: "sm:max-w-md",
+    lg: "sm:max-w-lg",
+    xl: "sm:max-w-xl",
+    full: "sm:max-w-4xl",
 };
 
 export function Modal({
@@ -55,42 +55,49 @@ export function Modal({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
             {/* Overlay */}
             <div
                 className="modal-overlay fixed inset-0"
                 onClick={onClose}
             />
 
-            {/* Modal */}
+            {/* Modal - Full screen on mobile, centered on tablet+ */}
             <div
                 className={cn(
-                    "relative bg-card border border-border shadow-card-lg w-full animate-in fade-in zoom-in-95 duration-200",
+                    "relative bg-card border border-border shadow-card-lg w-full animate-in fade-in duration-200",
+                    // Mobile: slide up from bottom, full width, max height
+                    "max-sm:slide-in-from-bottom-4 max-sm:max-h-[90dvh] max-sm:rounded-t-lg max-sm:border-b-0",
+                    // Desktop: centered with size constraints
+                    "sm:zoom-in-95 sm:max-h-[85vh]",
                     sizeClasses[size]
                 )}
             >
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-border">
-                    <div>
-                        <h2 className="text-lg font-semibold">{title}</h2>
+                <div className="flex items-center justify-between p-4 sm:p-6 border-b border-border sticky top-0 bg-card z-10">
+                    <div className="flex-1 min-w-0 pr-4">
+                        <h2 className="text-base sm:text-lg font-semibold truncate">{title}</h2>
                         {description && (
-                            <p className="text-sm text-muted-foreground mt-1">{description}</p>
+                            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{description}</p>
                         )}
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-1 hover:bg-muted transition-colors"
+                        className="p-2 hover:bg-muted transition-colors flex-shrink-0 touch-target"
+                        aria-label="Close modal"
                     >
                         <X size={20} />
                     </button>
                 </div>
 
-                {/* Content */}
-                <div className="p-6 max-h-[60vh] overflow-y-auto">{children}</div>
+                {/* Content - Scrollable */}
+                <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(90dvh-140px)] sm:max-h-[calc(85vh-160px)]">
+                    {children}
+                </div>
 
-                {/* Footer */}
+                {/* Footer - Sticky at bottom */}
                 {footer && (
-                    <div className="flex items-center justify-end gap-2 p-6 border-t border-border">
+                    <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-end gap-2 p-4 sm:p-6 border-t border-border sticky bottom-0 bg-card">
                         {footer}
                     </div>
                 )}

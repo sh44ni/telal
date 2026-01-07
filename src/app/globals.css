@@ -350,3 +350,157 @@ textarea,
 .shadow-card-lg {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
 }
+
+/* ========================================
+   MOBILE RESPONSIVE UTILITIES
+   ======================================== */
+
+/* Hide scrollbar for horizontal scroll containers */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Touch scroll indicators - fade effect on right edge */
+.scroll-fade-right {
+  position: relative;
+}
+
+.scroll-fade-right::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 32px;
+  background: linear-gradient(to left, var(--card), transparent);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.scroll-fade-right.show-fade::after {
+  opacity: 1;
+}
+
+/* Mobile-specific responsive overrides */
+@media (max-width: 640px) {
+
+  /* Reduce padding on mobile */
+  .mobile-compact {
+    padding: 1rem !important;
+  }
+
+  /* Full width elements on mobile */
+  .mobile-full-width {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Stack elements vertically on mobile */
+  .mobile-stack {
+    flex-direction: column !important;
+  }
+
+  /* Hide on mobile */
+  .mobile-hidden {
+    display: none !important;
+  }
+}
+
+/* Small tablet and up */
+@media (min-width: 641px) {
+
+  /* Show only on mobile */
+  .mobile-only {
+    display: none !important;
+  }
+}
+
+/* Touch-friendly sizing on mobile */
+@media (max-width: 768px) {
+
+  /* Ensure minimum touch target size - 44px Apple HIG recommendation */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Larger touch targets for action buttons */
+  .data-table td button,
+  .data-table td a {
+    min-width: 36px;
+    min-height: 36px;
+    padding: 8px;
+  }
+
+  /* Improve table readability on mobile */
+  .data-table th,
+  .data-table td {
+    padding: 10px 12px;
+    font-size: 0.875rem;
+  }
+
+  /* Make tabs scrollable */
+  .tabs-scrollable {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .tabs-scrollable::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tabs-scrollable>div {
+    flex-wrap: nowrap;
+    min-width: max-content;
+  }
+}
+
+/* Very small screens (iPhone SE, etc.) */
+@media (max-width: 375px) {
+
+  /* Even more compact padding */
+  .page-content {
+    padding: 0.75rem !important;
+  }
+
+  /* Reduce font sizes slightly */
+  h1 {
+    font-size: 1.25rem !important;
+  }
+
+  h2 {
+    font-size: 1.125rem !important;
+  }
+}
+
+/* Safe area insets for notched devices */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Prevent text selection on interactive elements for better mobile UX */
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Smooth momentum scrolling for iOS */
+.momentum-scroll {
+  -webkit-overflow-scrolling: touch;
+}

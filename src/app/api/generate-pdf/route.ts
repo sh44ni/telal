@@ -361,7 +361,7 @@ function generateHTML(contract: RentalContract, logoDataUrl: string): string {
         <div style="margin-top: 2mm;">
             <div class="details-row">
                 <div class="details-label-eng">This Agreement is valid for a period of</div>
-                <div class="details-input"></div>
+                <div class="details-input">${contract.agreementPeriod || ""}</div>
                 <div class="details-label-arabic">يسري هذا العقد لمدة</div>
             </div>
 

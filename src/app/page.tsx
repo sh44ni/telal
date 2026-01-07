@@ -78,7 +78,7 @@ export default function Dashboard() {
       subtitle="Telal Al-Bidaya Real Estate"
     >
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
         <StatCard
           title={t("dashboard.totalProperties")}
           value="124"
@@ -110,14 +110,14 @@ export default function Dashboard() {
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-4 sm:mb-6">
         {/* Revenue Chart */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>{t("dashboard.analytics")}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px]">
+            <div className="h-[250px] sm:h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
                   data={revenueData}
@@ -227,19 +227,19 @@ export default function Dashboard() {
       </div>
 
       {/* Bottom Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Quick Actions */}
         <Card>
           <CardHeader>
             <CardTitle>{t("dashboard.quickActions")}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
               {quickActions.map((action) => (
                 <Link key={action.label} href={action.href}>
-                  <div className="flex flex-col items-center gap-2 p-4 border border-border hover:border-primary hover:bg-primary/5 transition-colors cursor-pointer">
+                  <div className="flex flex-col items-center gap-2 p-3 sm:p-4 border border-border hover:border-primary hover:bg-primary/5 transition-colors cursor-pointer">
                     <action.icon size={24} className="text-primary" />
-                    <span className="text-sm font-medium text-center">{action.label}</span>
+                    <span className="text-xs sm:text-sm font-medium text-center">{action.label}</span>
                   </div>
                 </Link>
               ))}

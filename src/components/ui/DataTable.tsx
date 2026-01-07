@@ -105,8 +105,8 @@ export function DataTable<T extends Record<string, any>>({
         <div className="bg-card border border-border">
             {/* Search */}
             {searchable && (
-                <div className="p-4 border-b border-border">
-                    <div className="flex items-center gap-2 bg-muted px-3 py-2 max-w-sm">
+                <div className="p-3 sm:p-4 border-b border-border">
+                    <div className="flex items-center gap-2 bg-muted px-3 py-2.5 w-full sm:max-w-sm">
                         <Search size={18} className="text-muted-foreground" />
                         <input
                             type="text"
@@ -119,8 +119,8 @@ export function DataTable<T extends Record<string, any>>({
                 </div>
             )}
 
-            {/* Table */}
-            <div className="overflow-x-auto">
+            {/* Table - Horizontal scroll on mobile with momentum scrolling */}
+            <div className="overflow-x-auto momentum-scroll">
                 <table className="data-table">
                     <thead>
                         <tr>
@@ -235,7 +235,7 @@ export function DataTable<T extends Record<string, any>>({
             </div>
 
             {/* Footer with count */}
-            <div className="p-4 border-t border-border text-sm text-muted-foreground flex items-center justify-between">
+            <div className="p-3 sm:p-4 border-t border-border text-xs sm:text-sm text-muted-foreground flex items-center justify-between">
                 <span>
                     {t("common.showing", "Showing")} {processedData.length} {t("common.of", "of")} {data.length}
                 </span>
