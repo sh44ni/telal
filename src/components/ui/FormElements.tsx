@@ -7,11 +7,12 @@ import { cn } from "@/lib/utils";
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
     label?: string;
     error?: string;
+    shake?: boolean;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-    ({ className, label, error, id, ...props }, ref) => (
-        <div className="space-y-1.5">
+    ({ className, label, error, shake, id, ...props }, ref) => (
+        <div className={cn("space-y-1.5", shake && "shake")}>
             {label && (
                 <label htmlFor={id} className="text-sm font-medium text-foreground">
                     {label}
@@ -22,7 +23,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                 ref={ref}
                 className={cn(
                     "flex h-11 sm:h-10 w-full border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
-                    error && "border-destructive focus:ring-destructive",
+                    (error || shake) && "border-destructive focus:ring-destructive input-error",
                     className
                 )}
                 {...props}
@@ -37,11 +38,12 @@ Input.displayName = "Input";
 interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
     label?: string;
     error?: string;
+    shake?: boolean;
 }
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
-    ({ className, label, error, id, ...props }, ref) => (
-        <div className="space-y-1.5">
+    ({ className, label, error, shake, id, ...props }, ref) => (
+        <div className={cn("space-y-1.5", shake && "shake")}>
             {label && (
                 <label htmlFor={id} className="text-sm font-medium text-foreground">
                     {label}
@@ -52,7 +54,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
                 ref={ref}
                 className={cn(
                     "flex min-h-[80px] w-full border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
-                    error && "border-destructive focus:ring-destructive",
+                    (error || shake) && "border-destructive focus:ring-destructive input-error",
                     className
                 )}
                 {...props}
@@ -67,13 +69,14 @@ Textarea.displayName = "Textarea";
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
     label?: string;
     error?: string;
+    shake?: boolean;
     options: { value: string; label: string }[];
     placeholder?: string;
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
-    ({ className, label, error, id, options, placeholder, ...props }, ref) => (
-        <div className="space-y-1.5">
+    ({ className, label, error, shake, id, options, placeholder, ...props }, ref) => (
+        <div className={cn("space-y-1.5", shake && "shake")}>
             {label && (
                 <label htmlFor={id} className="text-sm font-medium text-foreground">
                     {label}
@@ -84,7 +87,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
                 ref={ref}
                 className={cn(
                     "flex h-10 w-full border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
-                    error && "border-destructive focus:ring-destructive",
+                    (error || shake) && "border-destructive focus:ring-destructive input-error",
                     className
                 )}
                 {...props}

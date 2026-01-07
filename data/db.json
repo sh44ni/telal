@@ -172,6 +172,36 @@
       "notes": "",
       "createdAt": "2026-01-07T02:27:03.288Z",
       "updatedAt": "2026-01-07T02:27:03.303Z"
+    },
+    {
+      "id": "rent-1767808112762",
+      "propertyId": "prop-1767750930070",
+      "tenantId": "cust-1767752803880",
+      "monthlyRent": 82,
+      "depositAmount": 71,
+      "leaseStart": "1992-10-14",
+      "leaseEnd": "1978-09-15",
+      "dueDay": 25,
+      "paymentStatus": "unpaid",
+      "paidUntil": "1992-10-14",
+      "notes": "Culpa ut repudiandae",
+      "createdAt": "2026-01-07T17:48:32.762Z",
+      "updatedAt": "2026-01-07T17:48:32.784Z"
+    },
+    {
+      "id": "rent-1767808149699",
+      "propertyId": "prop-1767751745626",
+      "tenantId": "cust-1767752803880",
+      "monthlyRent": 5,
+      "depositAmount": 4,
+      "leaseStart": "2025-12-03",
+      "leaseEnd": "2025-12-30",
+      "dueDay": 1,
+      "paymentStatus": "unpaid",
+      "paidUntil": "2025-12-03",
+      "notes": "",
+      "createdAt": "2026-01-07T17:49:09.699Z",
+      "updatedAt": "2026-01-07T17:49:09.708Z"
     }
   ],
   "receipts": [],

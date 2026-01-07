@@ -16,6 +16,24 @@ export async function GET() {
 export async function POST(request: NextRequest) {
     try {
         const customer: Customer = await request.json();
+
+        // Validation - required fields
+        const errors: string[] = [];
+
+        if (!customer.name?.trim()) {
+            errors.push("Customer name is required");
+        }
+        if (!customer.type) {
+            errors.push("Customer type is required");
+        }
+        if (!customer.phone?.trim()) {
+            errors.push("Phone number is required");
+        }
+
+        if (errors.length > 0) {
+            return NextResponse.json({ error: errors.join(", ") }, { status: 400 });
+        }
+
         const data = readData();
 
         // Ensure ID exists

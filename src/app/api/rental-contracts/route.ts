@@ -31,6 +31,45 @@ export async function GET() {
 export async function POST(request: NextRequest) {
     try {
         const contract: RentalContract = await request.json();
+
+        // Validation - required fields
+        const errors: string[] = [];
+
+        if (!contract.landlordName?.trim()) {
+            errors.push("Landlord name is required");
+        }
+        if (!contract.tenantName?.trim()) {
+            errors.push("Tenant name is required");
+        }
+        if (!contract.tenantIdPassport?.trim()) {
+            errors.push("Tenant ID/Passport is required");
+        }
+        if (!contract.tenantPhone?.trim()) {
+            errors.push("Tenant phone is required");
+        }
+        if (!contract.validFrom) {
+            errors.push("Contract start date is required");
+        }
+        if (!contract.validTo) {
+            errors.push("Contract end date is required");
+        }
+        if (!contract.monthlyRent || contract.monthlyRent <= 0) {
+            errors.push("Monthly rent must be greater than 0");
+        }
+
+        // Validate dates
+        if (contract.validFrom && contract.validTo) {
+            const startDate = new Date(contract.validFrom);
+            const endDate = new Date(contract.validTo);
+            if (endDate <= startDate) {
+                errors.push("Contract end date must be after start date");
+            }
+        }
+
+        if (errors.length > 0) {
+            return NextResponse.json({ error: errors.join(", ") }, { status: 400 });
+        }
+
         const data = readData();
 
         // Initialize array if needed

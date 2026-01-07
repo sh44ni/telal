@@ -33,6 +33,8 @@ export default function ProjectsPage() {
         startDate: "",
         endDate: "",
     });
+    const [formErrors, setFormErrors] = useState<Record<string, boolean>>({});
+    const [shakeFields, setShakeFields] = useState<Record<string, boolean>>({});
 
     const columns: Column<Project>[] = [
         { key: "name", label: t("projects.projectName"), sortable: true },
@@ -88,6 +90,9 @@ export default function ProjectsPage() {
     ];
 
     const handleOpenModal = (project?: Project) => {
+        setFormErrors({});
+        setShakeFields({});
+
         if (project) {
             setEditingProject(project);
             setFormData({
@@ -112,7 +117,41 @@ export default function ProjectsPage() {
         setIsModalOpen(true);
     };
 
+    const validateForm = (): boolean => {
+        const errors: Record<string, boolean> = {};
+
+        if (!formData.name.trim()) errors.name = true;
+        if (!formData.budget || parseFloat(formData.budget) <= 0) errors.budget = true;
+        if (!formData.startDate) errors.startDate = true;
+        if (!formData.endDate) errors.endDate = true;
+
+        // Validate dates
+        if (formData.startDate && formData.endDate) {
+            const start = new Date(formData.startDate);
+            const end = new Date(formData.endDate);
+            if (end <= start) {
+                errors.endDate = true;
+                toast.error("End date must be after start date");
+            }
+        }
+
+        setFormErrors(errors);
+
+        if (Object.keys(errors).length > 0) {
+            setShakeFields(errors);
+            setTimeout(() => setShakeFields({}), 500);
+            if (!errors.endDate || Object.keys(errors).length > 1) {
+                toast.error(t("common.fillRequiredFields", "Please fill all required fields"));
+            }
+            return false;
+        }
+
+        return true;
+    };
+
     const handleSubmit = () => {
+        if (!validateForm()) return;
+
         const projectData = {
             id: editingProject?.id || `proj-${Date.now()}`,
             name: formData.name,
@@ -184,27 +223,43 @@ export default function ProjectsPage() {
             >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Input
-                        label={t("projects.projectName")}
+                        label={t("projects.projectName") + " *"}
                         value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        onChange={(e) => {
+                            setFormData({ ...formData, name: e.target.value });
+                            if (formErrors.name) setFormErrors({ ...formErrors, name: false });
+                        }}
+                        shake={shakeFields.name}
                     />
                     <Input
-                        label={t("projects.budget")}
+                        label={t("projects.budget") + " *"}
                         type="number"
                         value={formData.budget}
-                        onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
+                        onChange={(e) => {
+                            setFormData({ ...formData, budget: e.target.value });
+                            if (formErrors.budget) setFormErrors({ ...formErrors, budget: false });
+                        }}
+                        shake={shakeFields.budget}
                     />
                     <Input
-                        label={t("projects.startDate")}
+                        label={t("projects.startDate") + " *"}
                         type="date"
                         value={formData.startDate}
-                        onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                        onChange={(e) => {
+                            setFormData({ ...formData, startDate: e.target.value });
+                            if (formErrors.startDate) setFormErrors({ ...formErrors, startDate: false });
+                        }}
+                        shake={shakeFields.startDate}
                     />
                     <Input
-                        label={t("projects.endDate")}
+                        label={t("projects.endDate") + " *"}
                         type="date"
                         value={formData.endDate}
-                        onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                        onChange={(e) => {
+                            setFormData({ ...formData, endDate: e.target.value });
+                            if (formErrors.endDate) setFormErrors({ ...formErrors, endDate: false });
+                        }}
+                        shake={shakeFields.endDate}
                     />
                     <Select
                         label={t("common.status")}

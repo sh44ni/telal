@@ -37,6 +37,8 @@ export default function CustomersPage() {
         nationality: "",
         notes: "",
     });
+    const [formErrors, setFormErrors] = useState<Record<string, boolean>>({});
+    const [shakeFields, setShakeFields] = useState<Record<string, boolean>>({});
 
     const tabs = [
         { id: "all", label: t("common.all"), count: customers.length },
@@ -76,6 +78,9 @@ export default function CustomersPage() {
     ];
 
     const handleOpenModal = (customer?: Customer) => {
+        setFormErrors({});
+        setShakeFields({});
+
         if (customer) {
             setEditingCustomer(customer);
             setFormData({
@@ -108,7 +113,27 @@ export default function CustomersPage() {
         setIsModalOpen(true);
     };
 
+    const validateForm = (): boolean => {
+        const errors: Record<string, boolean> = {};
+
+        if (!formData.name.trim()) errors.name = true;
+        if (!formData.phone.trim()) errors.phone = true;
+
+        setFormErrors(errors);
+
+        if (Object.keys(errors).length > 0) {
+            setShakeFields(errors);
+            setTimeout(() => setShakeFields({}), 500);
+            toast.error(t("common.fillRequiredFields", "Please fill all required fields"));
+            return false;
+        }
+
+        return true;
+    };
+
     const handleSubmit = () => {
+        if (!validateForm()) return;
+
         const customerData: Customer = {
             id: editingCustomer?.id || `cust-${Date.now()}`,
             name: formData.name,
@@ -186,9 +211,13 @@ export default function CustomersPage() {
             >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Input
-                        label={t("common.name")}
+                        label={t("common.name") + " *"}
                         value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        onChange={(e) => {
+                            setFormData({ ...formData, name: e.target.value });
+                            if (formErrors.name) setFormErrors({ ...formErrors, name: false });
+                        }}
+                        shake={shakeFields.name}
                     />
                     <Select
                         label={t("customers.customerType")}
@@ -208,9 +237,13 @@ export default function CustomersPage() {
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     />
                     <Input
-                        label={t("common.phone")}
+                        label={t("common.phone") + " *"}
                         value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        onChange={(e) => {
+                            setFormData({ ...formData, phone: e.target.value });
+                            if (formErrors.phone) setFormErrors({ ...formErrors, phone: false });
+                        }}
+                        shake={shakeFields.phone}
                     />
                     <Input
                         label="Alternate Phone"

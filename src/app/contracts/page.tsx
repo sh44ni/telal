@@ -55,6 +55,8 @@ export default function ContractsPage() {
     });
     const [deleting, setDeleting] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    const [formErrors, setFormErrors] = useState<Record<string, boolean>>({});
+    const [shakeFields, setShakeFields] = useState<Record<string, boolean>>({});
 
     // Fetch contracts
     useEffect(() => {
@@ -128,6 +130,9 @@ export default function ContractsPage() {
     ];
 
     const handleOpenModal = (contract?: RentalContract) => {
+        setFormErrors({});
+        setShakeFields({});
+
         if (contract) {
             setEditingContract(contract);
             setFormData({
@@ -160,7 +165,44 @@ export default function ContractsPage() {
         setIsModalOpen(true);
     };
 
+    const validateForm = (): boolean => {
+        const errors: Record<string, boolean> = {};
+
+        if (!formData.landlordName.trim()) errors.landlordName = true;
+        if (!formData.tenantName.trim()) errors.tenantName = true;
+        if (!formData.tenantIdPassport.trim()) errors.tenantIdPassport = true;
+        if (!formData.tenantPhone.trim()) errors.tenantPhone = true;
+        if (!formData.validFrom) errors.validFrom = true;
+        if (!formData.validTo) errors.validTo = true;
+        if (!formData.monthlyRent || parseFloat(formData.monthlyRent) <= 0) errors.monthlyRent = true;
+
+        // Validate dates
+        if (formData.validFrom && formData.validTo) {
+            const start = new Date(formData.validFrom);
+            const end = new Date(formData.validTo);
+            if (end <= start) {
+                errors.validTo = true;
+                toast.error("Contract end date must be after start date");
+            }
+        }
+
+        setFormErrors(errors);
+
+        if (Object.keys(errors).length > 0) {
+            setShakeFields(errors);
+            setTimeout(() => setShakeFields({}), 500);
+            if (!errors.validTo || Object.keys(errors).length > 1) {
+                toast.error("Please fill all required fields");
+            }
+            return false;
+        }
+
+        return true;
+    };
+
     const handleSubmit = async () => {
+        if (!validateForm()) return;
+
         setGenerating(true);
 
         try {
@@ -378,7 +420,11 @@ export default function ContractsPage() {
                                 <Input
                                     label="Name / الاسم *"
                                     value={formData.landlordName}
-                                    onChange={(e) => setFormData({ ...formData, landlordName: e.target.value })}
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, landlordName: e.target.value });
+                                        if (formErrors.landlordName) setFormErrors({ ...formErrors, landlordName: false });
+                                    }}
+                                    shake={shakeFields.landlordName}
                                 />
                                 <Input
                                     label="CR No / رقم السجل التجاري *"
@@ -416,12 +462,20 @@ export default function ContractsPage() {
                                 <Input
                                     label="Name / الاسم *"
                                     value={formData.tenantName}
-                                    onChange={(e) => setFormData({ ...formData, tenantName: e.target.value })}
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, tenantName: e.target.value });
+                                        if (formErrors.tenantName) setFormErrors({ ...formErrors, tenantName: false });
+                                    }}
+                                    shake={shakeFields.tenantName}
                                 />
                                 <Input
                                     label="ID/Passport / رقم الهوية *"
                                     value={formData.tenantIdPassport}
-                                    onChange={(e) => setFormData({ ...formData, tenantIdPassport: e.target.value })}
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, tenantIdPassport: e.target.value });
+                                        if (formErrors.tenantIdPassport) setFormErrors({ ...formErrors, tenantIdPassport: false });
+                                    }}
+                                    shake={shakeFields.tenantIdPassport}
                                 />
                                 <Input
                                     label="Labour Card (Expats) / بطاقة العمل"
@@ -431,7 +485,11 @@ export default function ContractsPage() {
                                 <Input
                                     label="Phone / الهاتف *"
                                     value={formData.tenantPhone}
-                                    onChange={(e) => setFormData({ ...formData, tenantPhone: e.target.value })}
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, tenantPhone: e.target.value });
+                                        if (formErrors.tenantPhone) setFormErrors({ ...formErrors, tenantPhone: false });
+                                    }}
+                                    shake={shakeFields.tenantPhone}
                                 />
                                 <Input
                                     label="Email / البريد الإلكتروني"
@@ -466,13 +524,21 @@ export default function ContractsPage() {
                                     label="Valid From / يبدأ في *"
                                     type="date"
                                     value={formData.validFrom}
-                                    onChange={(e) => setFormData({ ...formData, validFrom: e.target.value })}
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, validFrom: e.target.value });
+                                        if (formErrors.validFrom) setFormErrors({ ...formErrors, validFrom: false });
+                                    }}
+                                    shake={shakeFields.validFrom}
                                 />
                                 <Input
                                     label="Valid To / ينتهي في *"
                                     type="date"
                                     value={formData.validTo}
-                                    onChange={(e) => setFormData({ ...formData, validTo: e.target.value })}
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, validTo: e.target.value });
+                                        if (formErrors.validTo) setFormErrors({ ...formErrors, validTo: false });
+                                    }}
+                                    shake={shakeFields.validTo}
                                 />
                                 <Input
                                     label="Agreement Period / مدة العقد *"
@@ -485,7 +551,11 @@ export default function ContractsPage() {
                                     type="number"
                                     step="0.001"
                                     value={formData.monthlyRent}
-                                    onChange={(e) => setFormData({ ...formData, monthlyRent: e.target.value })}
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, monthlyRent: e.target.value });
+                                        if (formErrors.monthlyRent) setFormErrors({ ...formErrors, monthlyRent: false });
+                                    }}
+                                    shake={shakeFields.monthlyRent}
                                 />
                                 <Select
                                     label="Payment Frequency / دورية الدفع *"

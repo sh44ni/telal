@@ -16,6 +16,30 @@ export async function GET() {
 export async function POST(request: NextRequest) {
     try {
         const property: Property = await request.json();
+
+        // Validation - required fields
+        const errors: string[] = [];
+
+        if (!property.name?.trim()) {
+            errors.push("Property name is required");
+        }
+        if (!property.type) {
+            errors.push("Property type is required");
+        }
+        if (!property.location?.trim()) {
+            errors.push("Location is required");
+        }
+        if (!property.price || property.price <= 0) {
+            errors.push("Price must be greater than 0");
+        }
+        if (!property.area || property.area <= 0) {
+            errors.push("Area must be greater than 0");
+        }
+
+        if (errors.length > 0) {
+            return NextResponse.json({ error: errors.join(", ") }, { status: 400 });
+        }
+
         const data = readData();
 
         // Ensure ID exists

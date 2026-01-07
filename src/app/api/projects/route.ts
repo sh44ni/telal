@@ -16,6 +16,36 @@ export async function GET() {
 export async function POST(request: NextRequest) {
     try {
         const project: Project = await request.json();
+
+        // Validation - required fields
+        const errors: string[] = [];
+
+        if (!project.name?.trim()) {
+            errors.push("Project name is required");
+        }
+        if (!project.budget || project.budget <= 0) {
+            errors.push("Budget must be greater than 0");
+        }
+        if (!project.startDate) {
+            errors.push("Start date is required");
+        }
+        if (!project.endDate) {
+            errors.push("End date is required");
+        }
+
+        // Validate dates
+        if (project.startDate && project.endDate) {
+            const startDate = new Date(project.startDate);
+            const endDate = new Date(project.endDate);
+            if (endDate <= startDate) {
+                errors.push("End date must be after start date");
+            }
+        }
+
+        if (errors.length > 0) {
+            return NextResponse.json({ error: errors.join(", ") }, { status: 400 });
+        }
+
         const data = readData();
 
         // Ensure ID exists

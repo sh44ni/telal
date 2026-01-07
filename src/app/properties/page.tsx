@@ -47,6 +47,8 @@ export default function PropertiesPage() {
         description: "",
         projectId: "",
     });
+    const [formErrors, setFormErrors] = useState<Record<string, boolean>>({});
+    const [shakeFields, setShakeFields] = useState<Record<string, boolean>>({});
 
     const tabs = [
         { id: "all", label: t("common.all"), count: properties.length },
@@ -102,6 +104,10 @@ export default function PropertiesPage() {
     ];
 
     const handleOpenModal = (property?: Property) => {
+        // Reset errors when opening modal
+        setFormErrors({});
+        setShakeFields({});
+
         if (property) {
             setEditingProperty(property);
             setFormData({
@@ -138,7 +144,30 @@ export default function PropertiesPage() {
         setIsModalOpen(true);
     };
 
+    const validateForm = (): boolean => {
+        const errors: Record<string, boolean> = {};
+
+        if (!formData.name.trim()) errors.name = true;
+        if (!formData.location.trim()) errors.location = true;
+        if (!formData.price || parseFloat(formData.price) <= 0) errors.price = true;
+        if (!formData.area || parseFloat(formData.area) <= 0) errors.area = true;
+
+        setFormErrors(errors);
+
+        if (Object.keys(errors).length > 0) {
+            // Trigger shake animation
+            setShakeFields(errors);
+            setTimeout(() => setShakeFields({}), 500);
+            toast.error(t("common.fillRequiredFields", "Please fill all required fields"));
+            return false;
+        }
+
+        return true;
+    };
+
     const handleSubmit = () => {
+        if (!validateForm()) return;
+
         const propertyData: Property = {
             id: editingProperty?.id || `prop-${Date.now()}`,
             name: formData.name,
@@ -277,9 +306,13 @@ export default function PropertiesPage() {
                         ]}
                     />
                     <Input
-                        label={t("common.name")}
+                        label={t("common.name") + " *"}
                         value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        onChange={(e) => {
+                            setFormData({ ...formData, name: e.target.value });
+                            if (formErrors.name) setFormErrors({ ...formErrors, name: false });
+                        }}
+                        shake={shakeFields.name}
                     />
                     <Select
                         label={t("properties.propertyType")}
@@ -306,10 +339,14 @@ export default function PropertiesPage() {
                         ]}
                     />
                     <Input
-                        label={t("properties.price")}
+                        label={t("properties.price") + " *"}
                         type="number"
                         value={formData.price}
-                        onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                        onChange={(e) => {
+                            setFormData({ ...formData, price: e.target.value });
+                            if (formErrors.price) setFormErrors({ ...formErrors, price: false });
+                        }}
+                        shake={shakeFields.price}
                     />
                     <Input
                         label={t("rentals.monthlyRent")}
@@ -318,10 +355,14 @@ export default function PropertiesPage() {
                         onChange={(e) => setFormData({ ...formData, rentalPrice: e.target.value })}
                     />
                     <Input
-                        label={t("properties.area") + " (" + t("properties.sqm") + ")"}
+                        label={t("properties.area") + " * (" + t("properties.sqm") + ")"}
                         type="number"
                         value={formData.area}
-                        onChange={(e) => setFormData({ ...formData, area: e.target.value })}
+                        onChange={(e) => {
+                            setFormData({ ...formData, area: e.target.value });
+                            if (formErrors.area) setFormErrors({ ...formErrors, area: false });
+                        }}
+                        shake={shakeFields.area}
                     />
                     <Input
                         label={t("properties.bedrooms")}
@@ -336,9 +377,13 @@ export default function PropertiesPage() {
                         onChange={(e) => setFormData({ ...formData, bathrooms: e.target.value })}
                     />
                     <Input
-                        label={t("properties.location")}
+                        label={t("properties.location") + " *"}
                         value={formData.location}
-                        onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                        onChange={(e) => {
+                            setFormData({ ...formData, location: e.target.value });
+                            if (formErrors.location) setFormErrors({ ...formErrors, location: false });
+                        }}
+                        shake={shakeFields.location}
                     />
                     <div className="md:col-span-3">
                         <Input

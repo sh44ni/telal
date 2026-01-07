@@ -39,6 +39,8 @@ export default function RentalsPage() {
         dueDay: "1",
         notes: "",
     });
+    const [formErrors, setFormErrors] = useState<Record<string, boolean>>({});
+    const [shakeFields, setShakeFields] = useState<Record<string, boolean>>({});
 
     // Get overdue rentals count
     const overdueCount = rentals.filter(r => r.paymentStatus === "overdue").length;
@@ -91,6 +93,9 @@ export default function RentalsPage() {
     ];
 
     const handleOpenModal = (rental?: Rental) => {
+        setFormErrors({});
+        setShakeFields({});
+
         if (rental) {
             setEditingRental(rental);
             setFormData({
@@ -119,7 +124,42 @@ export default function RentalsPage() {
         setIsModalOpen(true);
     };
 
+    const validateForm = (): boolean => {
+        const errors: Record<string, boolean> = {};
+
+        if (!formData.propertyId) errors.propertyId = true;
+        if (!formData.tenantId) errors.tenantId = true;
+        if (!formData.monthlyRent || parseFloat(formData.monthlyRent) <= 0) errors.monthlyRent = true;
+        if (!formData.leaseStart) errors.leaseStart = true;
+        if (!formData.leaseEnd) errors.leaseEnd = true;
+
+        // Validate dates
+        if (formData.leaseStart && formData.leaseEnd) {
+            const start = new Date(formData.leaseStart);
+            const end = new Date(formData.leaseEnd);
+            if (end <= start) {
+                errors.leaseEnd = true;
+                toast.error("Lease end date must be after start date");
+            }
+        }
+
+        setFormErrors(errors);
+
+        if (Object.keys(errors).length > 0) {
+            setShakeFields(errors);
+            setTimeout(() => setShakeFields({}), 500);
+            if (!errors.leaseEnd || Object.keys(errors).length > 1) {
+                toast.error(t("common.fillRequiredFields", "Please fill all required fields"));
+            }
+            return false;
+        }
+
+        return true;
+    };
+
     const handleSubmit = () => {
+        if (!validateForm()) return;
+
         const rentalData: Rental = {
             id: editingRental?.id || `rent-${Date.now()}`,
             propertyId: formData.propertyId,
@@ -216,24 +256,36 @@ export default function RentalsPage() {
             >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Select
-                        label={t("rentals.property")}
+                        label={t("rentals.property") + " *"}
                         value={formData.propertyId}
-                        onChange={(e) => setFormData({ ...formData, propertyId: e.target.value })}
+                        onChange={(e) => {
+                            setFormData({ ...formData, propertyId: e.target.value });
+                            if (formErrors.propertyId) setFormErrors({ ...formErrors, propertyId: false });
+                        }}
                         options={propertyOptions}
                         placeholder="Select property"
+                        shake={shakeFields.propertyId}
                     />
                     <Select
-                        label={t("rentals.tenant")}
+                        label={t("rentals.tenant") + " *"}
                         value={formData.tenantId}
-                        onChange={(e) => setFormData({ ...formData, tenantId: e.target.value })}
+                        onChange={(e) => {
+                            setFormData({ ...formData, tenantId: e.target.value });
+                            if (formErrors.tenantId) setFormErrors({ ...formErrors, tenantId: false });
+                        }}
                         options={tenantOptions}
                         placeholder="Select tenant"
+                        shake={shakeFields.tenantId}
                     />
                     <Input
-                        label={t("rentals.monthlyRent")}
+                        label={t("rentals.monthlyRent") + " *"}
                         type="number"
                         value={formData.monthlyRent}
-                        onChange={(e) => setFormData({ ...formData, monthlyRent: e.target.value })}
+                        onChange={(e) => {
+                            setFormData({ ...formData, monthlyRent: e.target.value });
+                            if (formErrors.monthlyRent) setFormErrors({ ...formErrors, monthlyRent: false });
+                        }}
+                        shake={shakeFields.monthlyRent}
                     />
                     <Input
                         label={t("receipts.deposit")}
@@ -242,16 +294,24 @@ export default function RentalsPage() {
                         onChange={(e) => setFormData({ ...formData, depositAmount: e.target.value })}
                     />
                     <Input
-                        label={t("rentals.leaseStart")}
+                        label={t("rentals.leaseStart") + " *"}
                         type="date"
                         value={formData.leaseStart}
-                        onChange={(e) => setFormData({ ...formData, leaseStart: e.target.value })}
+                        onChange={(e) => {
+                            setFormData({ ...formData, leaseStart: e.target.value });
+                            if (formErrors.leaseStart) setFormErrors({ ...formErrors, leaseStart: false });
+                        }}
+                        shake={shakeFields.leaseStart}
                     />
                     <Input
-                        label={t("rentals.leaseEnd")}
+                        label={t("rentals.leaseEnd") + " *"}
                         type="date"
                         value={formData.leaseEnd}
-                        onChange={(e) => setFormData({ ...formData, leaseEnd: e.target.value })}
+                        onChange={(e) => {
+                            setFormData({ ...formData, leaseEnd: e.target.value });
+                            if (formErrors.leaseEnd) setFormErrors({ ...formErrors, leaseEnd: false });
+                        }}
+                        shake={shakeFields.leaseEnd}
                     />
                     <Select
                         label={t("rentals.dueDate") + " (Day of Month)"}
