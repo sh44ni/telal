@@ -1,25 +1,13 @@
 import fs from "fs";
 import path from "path";
-import type { Project, Property, Customer, Rental, Receipt, Contract, Document, RentalContract, Transaction } from "@/types";
+import type { Database, Project, Property, Customer, Rental, Receipt, Contract, Document, RentalContract, Transaction } from "@/types";
 
 // Database file path - stored in the project root
 const DB_PATH = path.join(process.cwd(), "data", "db.json");
 
-// Type for the database structure
-// Note: receipts array now stores Transaction objects (superset of Receipt)
-interface Database {
-    projects: Project[];
-    properties: Property[];
-    customers: Customer[];
-    rentals: Rental[];
-    receipts: (Receipt | Transaction)[];
-    contracts: Contract[];
-    documents: Document[];
-    rentalContracts: RentalContract[];
-}
-
 // Default empty database
 const defaultData: Database = {
+    users: [],
     projects: [],
     properties: [],
     customers: [],
@@ -28,6 +16,7 @@ const defaultData: Database = {
     contracts: [],
     documents: [],
     rentalContracts: [],
+    transactions: [],
 };
 
 // Ensure the data directory exists

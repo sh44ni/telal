@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readData, writeData } from "@/lib/db";
+import { requireAuth } from "@/lib/auth-helpers";
 import type { Rental } from "@/types";
 
 // GET /api/rentals - Get all rentals with tenant and property data
 export async function GET() {
+    const session = await requireAuth();
+    if (session instanceof NextResponse) return session;
+
     try {
         const data = readData();
         // Join rentals with tenant and property data
@@ -24,6 +28,9 @@ export async function GET() {
 
 // POST /api/rentals - Create a new rental
 export async function POST(request: NextRequest) {
+    const session = await requireAuth();
+    if (session instanceof NextResponse) return session;
+
     try {
         const rental: Rental = await request.json();
         const data = readData();
