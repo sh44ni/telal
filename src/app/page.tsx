@@ -1,280 +1,316 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { useRouter } from "next/navigation";
 import { PageContainer } from "@/components/layout";
-import { StatCard, Card, CardHeader, CardTitle, CardContent, Button } from "@/components/ui";
-import { useAppStore } from "@/stores/useAppStore";
+import { Button, Card, CardContent, Select, useToast } from "@/components/ui";
+import { formatCurrency } from "@/lib/utils";
 import {
-  Building2,
-  DollarSign,
-  Users,
   TrendingUp,
-  FileText,
+  TrendingDown,
+  DollarSign,
   Home,
-  Receipt,
-  AlertCircle,
+  Building2,
+  FileText,
+  ArrowRight,
+  ArrowUpRight,
+  ArrowDownRight,
+  AlertTriangle,
+  CheckCircle,
+  Clock
 } from "lucide-react";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-} from "recharts";
-import Link from "next/link";
 
-// Mock data for charts
-const revenueData = [
-  { month: "Jan", revenue: 450000, expenses: 280000 },
-  { month: "Feb", revenue: 520000, expenses: 310000 },
-  { month: "Mar", revenue: 480000, expenses: 290000 },
-  { month: "Apr", revenue: 610000, expenses: 340000 },
-  { month: "May", revenue: 580000, expenses: 320000 },
-  { month: "Jun", revenue: 720000, expenses: 380000 },
-  { month: "Jul", revenue: 690000, expenses: 360000 },
-  { month: "Aug", revenue: 780000, expenses: 410000 },
-  { month: "Sep", revenue: 850000, expenses: 450000 },
-  { month: "Oct", revenue: 920000, expenses: 480000 },
-  { month: "Nov", revenue: 880000, expenses: 460000 },
-  { month: "Dec", revenue: 950000, expenses: 500000 },
+interface DashboardData {
+  financial: {
+    revenue: number;
+    expenses: number;
+    netIncome: number;
+    revenueChange: number;
+    expenseChange: number;
+  };
+  properties: {
+    total: number;
+    available: number;
+    rented: number;
+    sold: number;
+  };
+  rentals: {
+    total: number;
+    paid: number;
+    overdue: number;
+    unpaid: number;
+  };
+  period: string;
+}
+
+const periodOptions = [
+  { value: "this_week", label: "This Week" },
+  { value: "this_month", label: "This Month" },
+  { value: "this_year", label: "This Year" },
+  { value: "all", label: "All Time" },
 ];
 
-const recentActivities = [
-  { id: 1, type: "payment", message: "Rent payment received from Ahmed Al Rashid", time: "2 hours ago" },
-  { id: 2, type: "contract", message: "New rental contract signed - Office 301", time: "5 hours ago" },
-  { id: 3, type: "property", message: "Property listed - Palm Villa 5", time: "1 day ago" },
-  { id: 4, type: "alert", message: "Overdue payment - Mohammed Hassan", time: "2 days ago" },
-  { id: 5, type: "customer", message: "New lead added - Fatima Al Maktoum", time: "3 days ago" },
-];
-
-export default function Dashboard() {
+export default function DashboardPage() {
   const { t } = useTranslation();
-  const { language } = useAppStore();
-  const isRTL = language === "ar";
+  const router = useRouter();
+  const toast = useToast();
+  const [period, setPeriod] = useState("this_month");
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Translated fees data
-  const feesData = [
-    { name: isRTL ? "إيجار" : "Rent", value: 65 },
-    { name: isRTL ? "مبيعات" : "Sales", value: 20 },
-    { name: isRTL ? "صيانة" : "Maintenance", value: 10 },
-    { name: isRTL ? "أخرى" : "Other", value: 5 },
-  ];
+  const fetchDashboardData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/dashboard?period=${period}`);
+      if (response.ok) {
+        const result = await response.json();
+        setData(result);
+      }
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [period]);
 
-  // Translated quick actions
-  const quickActions = [
-    { label: t("properties.addProperty"), href: "/properties", icon: Building2 },
-    { label: t("rentals.addRental"), href: "/rentals", icon: Home },
-    { label: t("receipts.generateReceipt"), href: "/receipts", icon: Receipt },
-    { label: t("contracts.addContract"), href: "/contracts", icon: FileText },
-  ];
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
+
+  const handleGenerateStatement = () => {
+    toast.info("Generating statement...");
+    // TODO: Implement statement generation
+    setTimeout(() => {
+      toast.success("Statement feature coming soon!");
+    }, 1000);
+  };
 
   return (
     <PageContainer
-      title={t("dashboard.welcome")}
-      subtitle="Telal Al-Bidaya Real Estate"
+      title={t("nav.dashboard")}
+      actions={
+        <div className="flex items-center gap-3">
+          <Select
+            value={period}
+            onChange={(e) => setPeriod(e.target.value)}
+            options={periodOptions}
+            className="min-w-[150px]"
+          />
+          <Button variant="outline" onClick={handleGenerateStatement}>
+            <FileText size={16} />
+            Statement
+          </Button>
+        </div>
+      }
     >
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
-        <StatCard
-          title={t("dashboard.totalProperties")}
-          value="124"
-          change={12.5}
-          trend="up"
-          icon={<Building2 size={24} />}
-        />
-        <StatCard
-          title={t("dashboard.totalRevenue")}
-          value="OMR 8.5M"
-          change={8.2}
-          trend="up"
-          icon={<DollarSign size={24} />}
-        />
-        <StatCard
-          title={t("dashboard.activeCustomers")}
-          value="86"
-          change={5.4}
-          trend="up"
-          icon={<Users size={24} />}
-        />
-        <StatCard
-          title={t("dashboard.monthlyRevenue")}
-          value="OMR 950K"
-          change={-2.1}
-          trend="down"
-          icon={<TrendingUp size={24} />}
-        />
-      </div>
-
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-4 sm:mb-6">
-        {/* Revenue Chart */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>{t("dashboard.analytics")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[250px] sm:h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart
-                  data={revenueData}
-                  margin={{ top: 10, right: 30, left: 10, bottom: 0 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis
-                    dataKey="month"
-                    stroke="#6b7280"
-                    fontSize={11}
-                    tick={{ fill: '#6b7280' }}
-                    reversed={isRTL}
-                  />
-                  <YAxis
-                    stroke="#6b7280"
-                    fontSize={11}
-                    tickFormatter={(v) => `${v / 1000}K`}
-                    width={50}
-                    tick={{ fill: '#6b7280' }}
-                    orientation={isRTL ? "right" : "left"}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#fff",
-                      border: "1px solid #e5e7eb",
-                      borderRadius: 0,
-                    }}
-                    formatter={(value) => [`OMR ${Number(value).toLocaleString()}`, ""]}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="#cea26e"
-                    fill="#cea26e"
-                    fillOpacity={0.2}
-                    strokeWidth={2}
-                    name="Revenue"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="expenses"
-                    stroke="#605c53"
-                    fill="#605c53"
-                    fillOpacity={0.1}
-                    strokeWidth={2}
-                    name="Expenses"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Fees Summary */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("dashboard.feesSummary")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[200px] mb-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={feesData}
-                  layout="vertical"
-                  margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis
-                    type="number"
-                    stroke="#6b7280"
-                    fontSize={11}
-                    tick={{ fill: '#6b7280' }}
-                  />
-                  <YAxis
-                    dataKey="name"
-                    type="category"
-                    stroke="#6b7280"
-                    fontSize={11}
-                    width={70}
-                    tick={{ fill: '#6b7280' }}
-                    orientation={isRTL ? "right" : "left"}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#fff",
-                      border: "1px solid #e5e7eb",
-                      borderRadius: 0,
-                    }}
-                    formatter={(value) => [`${value}%`, isRTL ? "الحصة" : "Share"]}
-                  />
-                  <Bar dataKey="value" fill="#cea26e" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">{t("dashboard.occupancyRate")}</span>
-                <span className="font-semibold text-success">87%</span>
+      <div className="space-y-6">
+        {/* Financial Summary Section */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Revenue Card */}
+          <Card className="border-success/20 bg-success/5">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground font-medium">Total Revenue</p>
+                  <p className="text-3xl font-bold text-success mt-1">
+                    {loading ? "..." : formatCurrency(data?.financial.revenue || 0)}
+                  </p>
+                  {data && data.financial.revenueChange !== 0 && !loading && (
+                    <div className={`flex items-center gap-1 mt-2 text-sm ${data.financial.revenueChange > 0 ? "text-success" : "text-destructive"}`}>
+                      {data.financial.revenueChange > 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                      <span>{Math.abs(data.financial.revenueChange)}% vs last period</span>
+                    </div>
+                  )}
+                </div>
+                <div className="p-3 bg-success/10 text-success">
+                  <TrendingUp size={28} />
+                </div>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">{t("dashboard.pendingPayments")}</span>
-                <span className="font-semibold text-destructive">3</span>
+            </CardContent>
+          </Card>
+
+          {/* Expenses Card */}
+          <Card className="border-destructive/20 bg-destructive/5">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground font-medium">Total Expenses</p>
+                  <p className="text-3xl font-bold text-destructive mt-1">
+                    {loading ? "..." : formatCurrency(data?.financial.expenses || 0)}
+                  </p>
+                  {data && data.financial.expenseChange !== 0 && !loading && (
+                    <div className={`flex items-center gap-1 mt-2 text-sm ${data.financial.expenseChange < 0 ? "text-success" : "text-destructive"}`}>
+                      {data.financial.expenseChange > 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                      <span>{Math.abs(data.financial.expenseChange)}% vs last period</span>
+                    </div>
+                  )}
+                </div>
+                <div className="p-3 bg-destructive/10 text-destructive">
+                  <TrendingDown size={28} />
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
 
-      {/* Bottom Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("dashboard.quickActions")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-2 sm:gap-3">
-              {quickActions.map((action) => (
-                <Link key={action.label} href={action.href}>
-                  <div className="flex flex-col items-center gap-2 p-3 sm:p-4 border border-border hover:border-primary hover:bg-primary/5 transition-colors cursor-pointer">
-                    <action.icon size={24} className="text-primary" />
-                    <span className="text-xs sm:text-sm font-medium text-center">{action.label}</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+          {/* Net Income Card */}
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground font-medium">Net Income</p>
+                  <p className={`text-3xl font-bold mt-1 ${(data?.financial.netIncome || 0) >= 0 ? "text-primary" : "text-destructive"}`}>
+                    {loading ? "..." : formatCurrency(data?.financial.netIncome || 0)}
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Revenue - Expenses
+                  </p>
+                </div>
+                <div className="p-3 bg-primary/10 text-primary">
+                  <DollarSign size={28} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-        {/* Recent Activities */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>{t("dashboard.recentActivities")}</CardTitle>
-            <Button variant="ghost" size="sm">
-              {t("common.view")} {t("common.all")}
+        {/* Properties Section */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Building2 size={20} />
+              Properties
+            </h2>
+            <Button variant="ghost" size="sm" onClick={() => router.push("/properties")}>
+              View All <ArrowRight size={14} />
             </Button>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {recentActivities.map((activity) => (
-                <div key={activity.id} className="flex items-start gap-3 pb-3 border-b border-border last:border-0 last:pb-0">
-                  <div className={`p-2 ${activity.type === "alert" ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}>
-                    {activity.type === "payment" && <DollarSign size={16} />}
-                    {activity.type === "contract" && <FileText size={16} />}
-                    {activity.type === "property" && <Building2 size={16} />}
-                    {activity.type === "alert" && <AlertCircle size={16} />}
-                    {activity.type === "customer" && <Users size={16} />}
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* Total Properties */}
+            <Card
+              className="cursor-pointer hover:border-primary/50 transition-colors"
+              onClick={() => router.push("/properties")}
+            >
+              <CardContent className="p-4 text-center">
+                <div className="p-2 bg-muted inline-block mb-2">
+                  <Building2 size={20} className="text-muted-foreground" />
+                </div>
+                <p className="text-2xl font-bold">{loading ? "-" : data?.properties.total || 0}</p>
+                <p className="text-sm text-muted-foreground">Total</p>
+              </CardContent>
+            </Card>
+
+            {/* Available */}
+            <Card
+              className="cursor-pointer hover:border-success/50 transition-colors"
+              onClick={() => router.push("/properties?status=available")}
+            >
+              <CardContent className="p-4 text-center">
+                <div className="p-2 bg-success/10 inline-block mb-2">
+                  <CheckCircle size={20} className="text-success" />
+                </div>
+                <p className="text-2xl font-bold text-success">{loading ? "-" : data?.properties.available || 0}</p>
+                <p className="text-sm text-muted-foreground">Available</p>
+              </CardContent>
+            </Card>
+
+            {/* Rented */}
+            <Card
+              className="cursor-pointer hover:border-blue-500/50 transition-colors"
+              onClick={() => router.push("/properties?status=rented")}
+            >
+              <CardContent className="p-4 text-center">
+                <div className="p-2 bg-blue-500/10 inline-block mb-2">
+                  <Home size={20} className="text-blue-500" />
+                </div>
+                <p className="text-2xl font-bold text-blue-500">{loading ? "-" : data?.properties.rented || 0}</p>
+                <p className="text-sm text-muted-foreground">Rented</p>
+              </CardContent>
+            </Card>
+
+            {/* Sold */}
+            <Card
+              className="cursor-pointer hover:border-orange-500/50 transition-colors"
+              onClick={() => router.push("/properties?status=sold")}
+            >
+              <CardContent className="p-4 text-center">
+                <div className="p-2 bg-orange-500/10 inline-block mb-2">
+                  <DollarSign size={20} className="text-orange-500" />
+                </div>
+                <p className="text-2xl font-bold text-orange-500">{loading ? "-" : data?.properties.sold || 0}</p>
+                <p className="text-sm text-muted-foreground">Sold</p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Rentals Section */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Home size={20} />
+              Rentals
+            </h2>
+            <Button variant="ghost" size="sm" onClick={() => router.push("/rentals")}>
+              View All <ArrowRight size={14} />
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Total Rentals */}
+            <Card
+              className="cursor-pointer hover:border-primary/50 transition-colors"
+              onClick={() => router.push("/rentals")}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Rentals</p>
+                    <p className="text-2xl font-bold mt-1">{loading ? "-" : data?.rentals.total || 0}</p>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-foreground truncate">{activity.message}</p>
-                    <p className="text-xs text-muted-foreground">{activity.time}</p>
+                  <div className="p-2 bg-muted">
+                    <Home size={20} className="text-muted-foreground" />
                   </div>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+
+            {/* Paid */}
+            <Card
+              className="cursor-pointer hover:border-success/50 transition-colors"
+              onClick={() => router.push("/rentals?status=paid")}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Paid</p>
+                    <p className="text-2xl font-bold text-success mt-1">{loading ? "-" : data?.rentals.paid || 0}</p>
+                  </div>
+                  <div className="p-2 bg-success/10">
+                    <CheckCircle size={20} className="text-success" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Overdue */}
+            <Card
+              className="cursor-pointer hover:border-destructive/50 transition-colors"
+              onClick={() => router.push("/rentals?status=overdue")}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Overdue</p>
+                    <p className="text-2xl font-bold text-destructive mt-1">{loading ? "-" : data?.rentals.overdue || 0}</p>
+                  </div>
+                  <div className="p-2 bg-destructive/10">
+                    <AlertTriangle size={20} className="text-destructive" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </PageContainer>
   );

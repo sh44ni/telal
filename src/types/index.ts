@@ -41,6 +41,15 @@ export interface Property {
     images: string[];
     projectId?: string;
     ownerId?: string;
+    // Sale tracking
+    saleInfo?: {
+        buyerId: string;
+        saleDate: string;
+        totalPrice: number;
+        paidAmount: number;
+        remainingAmount: number;
+        paymentStatus: "pending" | "partial" | "completed";
+    };
     createdAt: string;
     updatedAt: string;
 }
@@ -97,9 +106,79 @@ export interface RentalPayment {
     createdAt: string;
 }
 
-// ============ Receipt Types ============
-export type ReceiptType = "rent" | "deposit" | "maintenance" | "other";
+// ============ Transaction/Accounts Types ============
+export type TransactionCategory = "income" | "expense";
+
+export type IncomeType =
+    | "rent_payment"      // Regular rent
+    | "sale_payment"      // Property sale (initial or installment)
+    | "deposit"           // Security deposit
+    | "deposit_refund"    // Deposit returned
+    | "other_income";
+
+export type ExpenseType =
+    | "land_purchase"     // Buying land/property
+    | "maintenance"       // Repairs, upkeep
+    | "legal_fees"        // Legal/documentation
+    | "commission"        // Agent/broker fees
+    | "utilities"         // Water, electricity, etc.
+    | "taxes"             // Property taxes
+    | "insurance"         // Property insurance
+    | "other_expense";
+
+export type TransactionType = IncomeType | ExpenseType;
 export type PaymentMethod = "cash" | "bank_transfer" | "cheque" | "card";
+
+export interface SaleDetails {
+    totalPrice: number;
+    paidAmount: number;
+    remainingAmount: number;
+    paymentTerms: "lump_sum" | "monthly" | "quarterly" | "custom";
+    monthlyAmount?: number;
+    nextDueDate?: string;
+}
+
+export interface Transaction {
+    id: string;
+    transactionNo: string;           // TPL-XXXX format
+
+    // REQUIRED LINKS
+    projectId: string;
+    propertyId: string;
+    customerId: string;
+
+    // Transaction Details
+    category: TransactionCategory;
+    type: TransactionType;
+    amount: number;
+    paidBy: string;
+    paymentMethod: PaymentMethod;
+
+    // For Sales
+    isSaleTransaction?: boolean;
+    saleDetails?: SaleDetails;
+
+    // Metadata
+    rentalId?: string;
+    reference?: string;
+    description: string;
+    date: string;
+    createdAt: string;
+    updatedAt?: string;
+}
+
+// Property Sale Info (added to Property)
+export interface PropertySaleInfo {
+    buyerId: string;
+    saleDate: string;
+    totalPrice: number;
+    paidAmount: number;
+    remainingAmount: number;
+    paymentStatus: "pending" | "partial" | "completed";
+}
+
+// Legacy Receipt type (for backward compatibility)
+export type ReceiptType = "rent" | "deposit" | "maintenance" | "other";
 
 export interface Receipt {
     id: string;
@@ -109,6 +188,7 @@ export interface Receipt {
     paidBy: string;
     customerId?: string;
     propertyId?: string;
+    projectId?: string;
     rentalId?: string;
     paymentMethod: PaymentMethod;
     reference?: string;

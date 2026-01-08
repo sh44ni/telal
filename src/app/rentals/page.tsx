@@ -6,8 +6,9 @@ import { PageContainer } from "@/components/layout";
 import { Button, DataTable, Column, Modal, Input, Select, Badge, useToast, Card, CardHeader, CardTitle, CardContent, ConfirmDialog } from "@/components/ui";
 import { useRentalsStore, usePropertiesStore, useCustomersStore } from "@/stores/dataStores";
 import type { Rental } from "@/types";
-import { Plus, AlertTriangle } from "lucide-react";
+import { Plus, AlertTriangle, Mail, MoreVertical, Edit, Trash2 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { useRef, useEffect as useEffectRef } from "react";
 
 export default function RentalsPage() {
     const { t } = useTranslation();
@@ -41,6 +42,27 @@ export default function RentalsPage() {
     });
     const [formErrors, setFormErrors] = useState<Record<string, boolean>>({});
     const [shakeFields, setShakeFields] = useState<Record<string, boolean>>({});
+    const [sendingReminder, setSendingReminder] = useState<string | null>(null);
+    const [activeMenu, setActiveMenu] = useState<string | null>(null);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    // Close menu when clicking outside
+    useEffectRef(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setActiveMenu(null);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    // Check if rental is overdue
+    const isOverdue = (rental: Rental) => {
+        const paidUntil = new Date(rental.paidUntil);
+        const today = new Date();
+        return paidUntil < today;
+    };
 
     // Get overdue rentals count
     const overdueCount = rentals.filter(r => r.paymentStatus === "overdue").length;
@@ -199,6 +221,37 @@ export default function RentalsPage() {
         setDeleteConfirm({ isOpen: false, rental: null });
     };
 
+    const handleSendReminder = async (rental: Rental) => {
+        const tenant = customers.find(c => c.id === rental.tenantId);
+        if (!tenant?.email) {
+            toast.error("Tenant has no email address");
+            return;
+        }
+
+        setSendingReminder(rental.id);
+        toast.info(`Sending reminder to ${tenant.email}...`);
+        try {
+            const response = await fetch("/api/send-payment-reminder", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ rentalId: rental.id }),
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                toast.success(`Reminder sent to ${tenant.email}`);
+            } else {
+                toast.error(result.error || "Failed to send reminder");
+            }
+        } catch (error) {
+            console.error("Error sending reminder:", error);
+            toast.error("Failed to send reminder");
+        } finally {
+            setSendingReminder(null);
+        }
+    };
+
     const tenantOptions = customers
         .filter(c => c.type === "tenant" || c.type === "lead")
         .map(c => ({ value: c.id, label: c.name }));
@@ -236,8 +289,54 @@ export default function RentalsPage() {
                 data={rentals}
                 columns={columns}
                 keyField="id"
-                onEdit={handleOpenModal}
-                onDelete={handleDeleteClick}
+                actions={(item) => (
+                    <div className="relative" ref={activeMenu === item.id ? menuRef : null}>
+                        <button
+                            onClick={() => setActiveMenu(activeMenu === item.id ? null : item.id)}
+                            className="p-1.5 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                        >
+                            <MoreVertical size={16} />
+                        </button>
+
+                        {activeMenu === item.id && (
+                            <div className="absolute right-0 top-full mt-1 z-50 bg-card border border-border shadow-lg min-w-[140px]">
+                                <button
+                                    onClick={() => {
+                                        handleOpenModal(item);
+                                        setActiveMenu(null);
+                                    }}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors text-left"
+                                >
+                                    <Edit size={14} />
+                                    {t("common.edit")}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        handleDeleteClick(item);
+                                        setActiveMenu(null);
+                                    }}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors text-left text-destructive"
+                                >
+                                    <Trash2 size={14} />
+                                    {t("common.delete")}
+                                </button>
+                                {isOverdue(item) && (
+                                    <button
+                                        onClick={() => {
+                                            handleSendReminder(item);
+                                            setActiveMenu(null);
+                                        }}
+                                        disabled={sendingReminder === item.id}
+                                        className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors text-left text-primary disabled:opacity-50"
+                                    >
+                                        <Mail size={14} className={sendingReminder === item.id ? "animate-spin" : ""} />
+                                        {sendingReminder === item.id ? "Sending..." : "Send Reminder"}
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
             />
 
             <Modal

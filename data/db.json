@@ -99,6 +99,24 @@
       "images": [],
       "createdAt": "2026-01-07T02:09:05.626Z",
       "updatedAt": "2026-01-07T02:09:06.931Z"
+    },
+    {
+      "id": "prop-1767869799554",
+      "name": "sfsd",
+      "type": "villa",
+      "status": "rented",
+      "price": 23,
+      "rentalPrice": 2334,
+      "area": 1233,
+      "bedrooms": 232,
+      "location": "323",
+      "address": "",
+      "description": "",
+      "projectId": "proj-1767750395428",
+      "features": [],
+      "images": [],
+      "createdAt": "2026-01-08T10:56:39.554Z",
+      "updatedAt": "2026-01-08T10:56:50.000Z"
     }
   ],
   "customers": [
@@ -125,6 +143,18 @@
       "assignedPropertyIds": [],
       "createdAt": "2026-01-07T02:26:53.184Z",
       "updatedAt": "2026-01-07T02:26:53.221Z"
+    },
+    {
+      "id": "cust-1767868688848",
+      "name": "Zeeshan Khan",
+      "type": "lead",
+      "email": "imzeeshankhann@gmail.com",
+      "phone": "03178328164",
+      "address": "House #211, Palm Villas",
+      "notes": "",
+      "assignedPropertyIds": [],
+      "createdAt": "2026-01-08T10:38:08.848Z",
+      "updatedAt": "2026-01-08T10:38:08.863Z"
     }
   ],
   "rentals": [
@@ -202,9 +232,50 @@
       "notes": "",
       "createdAt": "2026-01-07T17:49:09.699Z",
       "updatedAt": "2026-01-07T17:49:09.708Z"
+    },
+    {
+      "id": "rent-1767868724810",
+      "propertyId": "prop-1767751217813",
+      "tenantId": "cust-1767868688848",
+      "monthlyRent": 70,
+      "depositAmount": 30,
+      "leaseStart": "2026-01-08",
+      "leaseEnd": "2026-01-10",
+      "dueDay": 1,
+      "paymentStatus": "unpaid",
+      "paidUntil": "2026-01-08",
+      "notes": "",
+      "createdAt": "2026-01-08T10:38:44.810Z",
+      "updatedAt": "2026-01-08T10:38:44.821Z"
     }
   ],
-  "receipts": [],
+  "receipts": [
+    {
+      "id": "rcpt-1767867023565",
+      "receiptNo": "TPL-0001",
+      "type": "rent",
+      "amount": 9,
+      "paidBy": "sssds",
+      "paymentMethod": "cash",
+      "reference": "dssd",
+      "description": "sdsd",
+      "date": "2026-01-08",
+      "createdAt": "2026-01-08T10:10:23.565Z"
+    },
+    {
+      "id": "rcpt-1767869617223",
+      "receiptNo": "TPL-0002",
+      "type": "rent",
+      "amount": 20,
+      "paidBy": "Zeeshan Khan",
+      "customerId": "cust-1767868688848",
+      "propertyId": "prop-1767751217813",
+      "paymentMethod": "bank_transfer",
+      "description": "",
+      "date": "2026-01-08",
+      "createdAt": "2026-01-08T10:53:37.223Z"
+    }
+  ],
   "contracts": [],
   "documents": [
     {
