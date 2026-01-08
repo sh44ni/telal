@@ -5,6 +5,7 @@ import { readData } from "@/lib/db";
 import type { User } from "@/types";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  trustHost: true,
   providers: [
     Credentials({
       credentials: {

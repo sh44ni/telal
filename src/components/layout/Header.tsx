@@ -34,7 +34,10 @@ export function Header() {
     };
 
     const handleLogout = async () => {
-        await signOut({ callbackUrl: "/login" });
+        await signOut({
+            redirect: true,
+            callbackUrl: "/login"
+        });
     };
 
     // Check for late rentals on component mount
