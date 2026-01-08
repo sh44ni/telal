@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession, signOut } from "next-auth/react";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "@/stores/useAppStore";
 import { cn } from "@/lib/utils";
@@ -8,6 +9,7 @@ import { Menu, Globe, Bell, Search, User, LogOut, Settings, ChevronDown, X, Aler
 import Link from "next/link";
 
 export function Header() {
+    const { data: session } = useSession();
     const { t, i18n } = useTranslation();
     const {
         language,
@@ -31,9 +33,11 @@ export function Header() {
         document.documentElement.lang = newLang;
     };
 
-    const handleLogout = () => {
-        localStorage.clear();
-        window.location.href = "/";
+    const handleLogout = async () => {
+        await signOut({
+            redirect: true,
+            callbackUrl: "/login"
+        });
     };
 
     // Check for late rentals on component mount
@@ -247,11 +251,11 @@ export function Header() {
                         onClick={() => setUserMenuOpen(!userMenuOpen)}
                     >
                         <div className="w-8 h-8 bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold">
-                            <User size={18} />
+                            {session?.user?.name ? session.user.name.charAt(0).toUpperCase() : <User size={18} />}
                         </div>
                         <div className="hidden sm:block text-left">
-                            <p className="text-sm font-medium">Admin</p>
-                            <p className="text-xs text-muted-foreground">Administrator</p>
+                            <p className="text-sm font-medium">{session?.user?.name || "User"}</p>
+                            <p className="text-xs text-muted-foreground">{(session?.user as any)?.role || "User"}</p>
                         </div>
                         <ChevronDown size={16} className={cn("hidden sm:block transition-transform", userMenuOpen && "rotate-180")} />
                     </button>

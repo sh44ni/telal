@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readData, writeData } from "@/lib/db";
+import { requireAuth } from "@/lib/auth-helpers";
 import type { Customer } from "@/types";
 
 // GET /api/customers - Get all customers
 export async function GET() {
+    // Protect route
+    const session = await requireAuth();
+    if (session instanceof NextResponse) return session;
+
     try {
         const data = readData();
         return NextResponse.json(data.customers);
@@ -14,6 +19,10 @@ export async function GET() {
 
 // POST /api/customers - Create a new customer
 export async function POST(request: NextRequest) {
+    // Protect route
+    const session = await requireAuth();
+    if (session instanceof NextResponse) return session;
+
     try {
         const customer: Customer = await request.json();
 

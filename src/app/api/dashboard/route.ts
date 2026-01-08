@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readData } from "@/lib/db";
+import { requireAuth } from "@/lib/auth-helpers";
 
 export async function GET(request: NextRequest) {
+    const session = await requireAuth();
+    if (session instanceof NextResponse) return session;
+
     try {
         const data = readData();
         const { searchParams } = new URL(request.url);

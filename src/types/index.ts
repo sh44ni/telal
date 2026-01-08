@@ -356,3 +356,28 @@ export interface FilterParams {
     page?: number;
     limit?: number;
 }
+
+// ============ User/Auth Types ============
+export interface User {
+    id: string;
+    name: string;
+    email: string;
+    password: string; // hashed
+    role: "admin" | "manager" | "user";
+    createdAt: string;
+    updatedAt: string;
+}
+
+// ============ Database Type ============
+export interface Database {
+    users: User[];
+    projects: Project[];
+    properties: Property[];
+    customers: Customer[];
+    rentals: Rental[];
+    receipts: Receipt[];
+    contracts: Contract[];
+    rentalContracts: RentalContract[];
+    documents: Document[];
+    transactions: Transaction[];
+}

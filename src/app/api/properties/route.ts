@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readData, writeData } from "@/lib/db";
+import { requireAuth } from "@/lib/auth-helpers";
 import type { Property } from "@/types";
 
 // GET /api/properties - Get all properties
 export async function GET() {
+    const session = await requireAuth();
+    if (session instanceof NextResponse) return session;
+
     try {
         const data = readData();
         return NextResponse.json(data.properties);
@@ -14,6 +18,9 @@ export async function GET() {
 
 // POST /api/properties - Create a new property
 export async function POST(request: NextRequest) {
+    const session = await requireAuth();
+    if (session instanceof NextResponse) return session;
+
     try {
         const property: Property = await request.json();
 

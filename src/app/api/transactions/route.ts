@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readData, writeData } from "@/lib/db";
+import { requireAuth } from "@/lib/auth-helpers";
 import type { Transaction } from "@/types";
 
 // Generate transaction number in TPL-XXXX format
@@ -23,6 +24,9 @@ function generateTransactionNumber(transactions: Transaction[]): string {
 
 // GET /api/transactions - Get all transactions
 export async function GET(request: NextRequest) {
+    const session = await requireAuth();
+    if (session instanceof NextResponse) return session;
+
     try {
         const data = readData();
         const { searchParams } = new URL(request.url);
@@ -70,6 +74,9 @@ export async function GET(request: NextRequest) {
 
 // POST /api/transactions - Create new transaction
 export async function POST(request: NextRequest) {
+    const session = await requireAuth();
+    if (session instanceof NextResponse) return session;
+
     try {
         const body = await request.json();
         const data = readData();
