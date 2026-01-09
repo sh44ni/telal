@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readData, writeData } from "@/lib/db";
-import type { Customer } from "@/types";
+import { prisma } from "@/lib/prisma";
 
 interface RouteParams {
     params: Promise<{ id: string }>;
@@ -10,8 +9,9 @@ interface RouteParams {
 export async function GET(request: NextRequest, { params }: RouteParams) {
     try {
         const { id } = await params;
-        const data = readData();
-        const customer = data.customers.find((c: Customer) => c.id === id);
+        const customer = await prisma.customer.findUnique({
+            where: { id },
+        });
 
         if (!customer) {
             return NextResponse.json({ error: "Customer not found" }, { status: 404 });
@@ -19,6 +19,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
         return NextResponse.json(customer);
     } catch (error) {
+        console.error("Error fetching customer:", error);
         return NextResponse.json({ error: "Failed to fetch customer" }, { status: 500 });
     }
 }
@@ -27,24 +28,28 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function PUT(request: NextRequest, { params }: RouteParams) {
     try {
         const { id } = await params;
-        const updates: Partial<Customer> = await request.json();
-        const data = readData();
+        const body = await request.json();
 
-        const index = data.customers.findIndex((c: Customer) => c.id === id);
-        if (index === -1) {
+        // Check if customer exists
+        const existing = await prisma.customer.findUnique({ where: { id } });
+        if (!existing) {
             return NextResponse.json({ error: "Customer not found" }, { status: 404 });
         }
 
-        // Merge updates with existing customer
-        data.customers[index] = {
-            ...data.customers[index],
-            ...updates,
-            updatedAt: new Date().toISOString(),
-        };
+        // Convert type to uppercase if provided
+        const updateData: any = { ...body };
+        if (body.type) {
+            updateData.type = body.type.toUpperCase();
+        }
 
-        writeData(data);
-        return NextResponse.json(data.customers[index]);
+        const customer = await prisma.customer.update({
+            where: { id },
+            data: updateData,
+        });
+
+        return NextResponse.json(customer);
     } catch (error) {
+        console.error("Error updating customer:", error);
         return NextResponse.json({ error: "Failed to update customer" }, { status: 500 });
     }
 }
@@ -53,75 +58,58 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
     try {
         const { id } = await params;
-        const data = readData();
 
-        const index = data.customers.findIndex((c: Customer) => c.id === id);
-        if (index === -1) {
+        // Check if customer exists and get name for response
+        const customer = await prisma.customer.findUnique({
+            where: { id },
+            include: {
+                rentals: {
+                    select: { id: true, propertyId: true }
+                },
+                transactions: {
+                    select: { id: true }
+                }
+            }
+        });
+
+        if (!customer) {
             return NextResponse.json({ error: "Customer not found" }, { status: 404 });
         }
 
-        const customer = data.customers[index];
+        const deletedRentals = customer.rentals.length;
+        const deletedTransactions = customer.transactions.length;
+        const customerName = customer.name;
 
-        // Track what gets deleted for the response
-        let deletedTransactions = 0;
-        let deletedRentals = 0;
-        let freedProperties = 0;
+        // Get property IDs to update status
+        const propertyIds = customer.rentals.map(r => r.propertyId);
 
-        // 1. Delete all transactions for this customer from both receipts and transactions arrays
-        // Note: Transactions are stored in data.receipts (legacy name from the codebase)
-        if (data.receipts) {
-            const originalLength = data.receipts.length;
-            data.receipts = data.receipts.filter(
-                (t: { customerId?: string }) => t.customerId !== id
-            );
-            deletedTransactions += originalLength - data.receipts.length;
+        // Delete customer (cascade will handle related records via Prisma schema)
+        await prisma.customer.delete({
+            where: { id },
+        });
+
+        // Update properties that were rented to this customer to "available"
+        if (propertyIds.length > 0) {
+            await prisma.property.updateMany({
+                where: {
+                    id: { in: propertyIds },
+                    status: 'RENTED',
+                },
+                data: {
+                    status: 'AVAILABLE',
+                },
+            });
         }
-        // Also check the transactions array (if it exists and has data)
-        if (data.transactions && data.transactions.length > 0) {
-            const originalLength = data.transactions.length;
-            data.transactions = data.transactions.filter(
-                (t: { customerId?: string }) => t.customerId !== id
-            );
-            deletedTransactions += originalLength - data.transactions.length;
-        }
-
-        // 2. Find and delete rentals for this customer (tenant), mark properties as available
-        if (data.rentals) {
-            const customerRentals = data.rentals.filter(
-                (r: { tenantId?: string }) => r.tenantId === id
-            );
-
-            // Mark rented properties as available
-            for (const rental of customerRentals) {
-                const propertyIndex = data.properties?.findIndex(
-                    (p: { id: string }) => p.id === rental.propertyId
-                );
-                if (propertyIndex !== undefined && propertyIndex !== -1) {
-                    data.properties[propertyIndex].status = "available";
-                    freedProperties++;
-                }
-            }
-
-            // Delete the rentals
-            const originalRentalsLength = data.rentals.length;
-            data.rentals = data.rentals.filter(
-                (r: { tenantId?: string }) => r.tenantId !== id
-            );
-            deletedRentals = originalRentalsLength - data.rentals.length;
-        }
-
-        // 3. Delete the customer
-        data.customers.splice(index, 1);
-        writeData(data);
 
         return NextResponse.json({
             message: "Customer deleted successfully",
             deletedTransactions,
             deletedRentals,
-            freedProperties,
-            customerName: customer.name
+            freedProperties: propertyIds.length,
+            customerName
         });
     } catch (error) {
+        console.error("Error deleting customer:", error);
         return NextResponse.json({ error: "Failed to delete customer" }, { status: 500 });
     }
 }

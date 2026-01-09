@@ -19,11 +19,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         try {
           // Dynamic import to avoid Edge Runtime issues
           // This only runs during actual authentication (Node.js runtime)
-          const { readData } = await import("@/lib/db");
-          const db = readData();
-          const user = db.users.find(
-            (u: User) => u.email === credentials.email
-          );
+          const { prisma } = await import("@/lib/prisma");
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email as string },
+          });
 
           if (!user) {
             return null;
@@ -43,7 +42,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             id: user.id,
             name: user.name,
             email: user.email,
-            role: user.role,
+            role: user.role.toLowerCase() as "admin" | "manager" | "user",
           };
         } catch (error) {
           console.error("Auth error:", error);

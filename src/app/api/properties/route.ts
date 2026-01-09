@@ -1,23 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readData, writeData } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-helpers";
-import type { Property } from "@/types";
 
 // Generate property ID in PRP-XXXX format
-function generatePropertyId(properties: Property[]): string {
+async function generatePropertyId(): Promise<string> {
+    const properties = await prisma.property.findMany({
+        orderBy: { propertyId: 'desc' },
+        take: 1,
+    });
+
     if (!properties || properties.length === 0) {
         return "PRP-0001";
     }
 
-    const numbers = properties
-        .map(p => {
-            const match = p.propertyId?.match(/PRP-(\d+)/);
-            return match ? parseInt(match[1], 10) : 0;
-        })
-        .filter(n => !isNaN(n));
-
-    const maxNumber = numbers.length > 0 ? Math.max(...numbers) : 0;
-    const nextNumber = maxNumber + 1;
+    const lastPropertyId = properties[0].propertyId;
+    const match = lastPropertyId?.match(/PRP-(\d+)/);
+    const lastNumber = match ? parseInt(match[1], 10) : 0;
+    const nextNumber = lastNumber + 1;
 
     return `PRP-${nextNumber.toString().padStart(4, "0")}`;
 }
@@ -28,9 +27,13 @@ export async function GET() {
     if (session instanceof NextResponse) return session;
 
     try {
-        const data = readData();
-        return NextResponse.json(data.properties);
+        const properties = await prisma.property.findMany({
+            orderBy: { createdAt: 'desc' },
+        });
+
+        return NextResponse.json(properties);
     } catch (error) {
+        console.error("Error fetching properties:", error);
         return NextResponse.json({ error: "Failed to fetch properties" }, { status: 500 });
     }
 }
@@ -41,24 +44,24 @@ export async function POST(request: NextRequest) {
     if (session instanceof NextResponse) return session;
 
     try {
-        const property: Property = await request.json();
+        const body = await request.json();
 
         // Validation - required fields
         const errors: string[] = [];
 
-        if (!property.name?.trim()) {
+        if (!body.name?.trim()) {
             errors.push("Property name is required");
         }
-        if (!property.type) {
+        if (!body.type) {
             errors.push("Property type is required");
         }
-        if (!property.location?.trim()) {
+        if (!body.location?.trim()) {
             errors.push("Location is required");
         }
-        if (!property.price || property.price <= 0) {
+        if (!body.price || body.price <= 0) {
             errors.push("Price must be greater than 0");
         }
-        if (!property.area || property.area <= 0) {
+        if (!body.area || body.area <= 0) {
             errors.push("Area must be greater than 0");
         }
 
@@ -66,32 +69,38 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: errors.join(", ") }, { status: 400 });
         }
 
-        const data = readData();
-
-        // Ensure ID exists
-        if (!property.id) {
-            property.id = `prop-${Date.now()}`;
-        }
-
         // Generate property ID if not present
-        if (!property.propertyId) {
-            property.propertyId = generatePropertyId(data.properties);
-        }
+        const propertyId = body.propertyId || await generatePropertyId();
 
-        // Set timestamps
-        const now = new Date().toISOString();
-        property.createdAt = property.createdAt || now;
-        property.updatedAt = now;
+        // Convert type and status to uppercase enum values
+        const propertyType = body.type.toUpperCase();
+        const propertyStatus = body.status ? body.status.toUpperCase() : 'AVAILABLE';
 
-        // Set defaults
-        property.images = property.images || [];
-        property.features = property.features || [];
-
-        data.properties.push(property);
-        writeData(data);
+        const property = await prisma.property.create({
+            data: {
+                propertyId,
+                name: body.name.trim(),
+                type: propertyType,
+                status: propertyStatus,
+                price: body.price,
+                rentalPrice: body.rentalPrice || null,
+                area: body.area,
+                bedrooms: body.bedrooms || null,
+                bathrooms: body.bathrooms || null,
+                location: body.location.trim(),
+                address: body.address || '',
+                description: body.description || '',
+                features: body.features || [],
+                images: body.images || [],
+                saleInfo: body.saleInfo || null,
+                projectId: body.projectId || null,
+                ownerId: body.ownerId || null,
+            },
+        });
 
         return NextResponse.json(property, { status: 201 });
     } catch (error) {
+        console.error("Error creating property:", error);
         return NextResponse.json({ error: "Failed to create property" }, { status: 500 });
     }
 }

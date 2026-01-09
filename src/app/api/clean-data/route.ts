@@ -1,52 +1,8 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/auth-helpers";
 import fs from "fs";
 import path from "path";
-
-// Helper function to clean a db.json file
-function cleanDatabaseFile(dbPath: string) {
-    if (!fs.existsSync(dbPath)) {
-        return null;
-    }
-
-    try {
-        const fileContent = fs.readFileSync(dbPath, "utf-8");
-        const db = JSON.parse(fileContent);
-
-        // Count items before cleaning
-        const counts = {
-            customers: db.customers?.length || 0,
-            projects: db.projects?.length || 0,
-            properties: db.properties?.length || 0,
-            rentals: db.rentals?.length || 0,
-            contracts: db.contracts?.length || 0,
-            documents: db.documents?.length || 0,
-            receipts: db.receipts?.length || 0,
-            rentalContracts: db.rentalContracts?.length || 0,
-            transactions: db.transactions?.length || 0,
-        };
-
-        // Preserve users but clear all other data
-        const cleanedDb = {
-            users: db.users || [], // Keep users (admin account)
-            projects: [],
-            properties: [],
-            customers: [],
-            rentals: [],
-            receipts: [],
-            contracts: [],
-            documents: [],
-            rentalContracts: [],
-            transactions: [],
-        };
-
-        fs.writeFileSync(dbPath, JSON.stringify(cleanedDb, null, 2), "utf-8");
-
-        return counts;
-    } catch (error) {
-        console.error(`Error cleaning database at ${dbPath}:`, error);
-        return null;
-    }
-}
 
 // Helper function to clean a directory of files
 function cleanDirectory(dirPath: string) {
@@ -78,40 +34,48 @@ function cleanDirectory(dirPath: string) {
 
 // DELETE - Clean all user data (customers, projects, properties, rentals, contracts, documents)
 export async function DELETE() {
+    const session = await requireAuth();
+    if (session instanceof NextResponse) return session;
+
     try {
         const cwd = process.cwd();
 
-        // Clean both possible db.json locations
-        const mainDbPath = path.join(cwd, "data", "db.json");
-        const nestedDbPath = path.join(cwd, "telalalbedaya", "data", "db.json");
-
-        const mainCounts = cleanDatabaseFile(mainDbPath);
-        const nestedCounts = cleanDatabaseFile(nestedDbPath);
-
-        // Combine counts from both databases
-        const totalCounts = {
-            customers: (mainCounts?.customers || 0) + (nestedCounts?.customers || 0),
-            projects: (mainCounts?.projects || 0) + (nestedCounts?.projects || 0),
-            properties: (mainCounts?.properties || 0) + (nestedCounts?.properties || 0),
-            rentals: (mainCounts?.rentals || 0) + (nestedCounts?.rentals || 0),
-            contracts: (mainCounts?.contracts || 0) + (nestedCounts?.contracts || 0),
-            documents: (mainCounts?.documents || 0) + (nestedCounts?.documents || 0),
-            receipts: (mainCounts?.receipts || 0) + (nestedCounts?.receipts || 0),
-            rentalContracts: (mainCounts?.rentalContracts || 0) + (nestedCounts?.rentalContracts || 0),
-            transactions: (mainCounts?.transactions || 0) + (nestedCounts?.transactions || 0),
+        // Count items before deleting
+        const counts = {
+            customers: await prisma.customer.count(),
+            projects: await prisma.project.count(),
+            properties: await prisma.property.count(),
+            rentals: await prisma.rental.count(),
+            contracts: await prisma.contract.count(),
+            documents: await prisma.document.count(),
+            receipts: await prisma.receipt.count(),
+            rentalContracts: await prisma.rentalContract.count(),
+            saleContracts: await prisma.saleContract.count(),
+            transactions: await prisma.transaction.count(),
         };
 
-        // Clean uploaded files from both locations
+        // Delete all data from database (using Prisma deleteMany)
+        // Delete in order to respect foreign key constraints
+        await prisma.receipt.deleteMany({});
+        await prisma.transaction.deleteMany({});
+        await prisma.rental.deleteMany({});
+        await prisma.contract.deleteMany({});
+        await prisma.rentalContract.deleteMany({});
+        await prisma.saleContract.deleteMany({});
+        await prisma.document.deleteMany({});
+        await prisma.property.deleteMany({});
+        await prisma.customer.deleteMany({});
+        await prisma.project.deleteMany({});
+
+        // Clean uploaded files
         let filesDeleted = 0;
         filesDeleted += cleanDirectory(path.join(cwd, "public", "uploads"));
         filesDeleted += cleanDirectory(path.join(cwd, "public", "documents"));
-        filesDeleted += cleanDirectory(path.join(cwd, "telalalbedaya", "public", "uploads"));
-        filesDeleted += cleanDirectory(path.join(cwd, "telalalbedaya", "public", "documents"));
 
         return NextResponse.json({
             success: true,
             message: "All data has been deleted successfully",
-            deleted: totalCounts,
+            deleted: counts,
             filesDeleted,
         });
     } catch (error) {
@@ -122,4 +86,3 @@ export async function DELETE() {
         );
     }
 }
-

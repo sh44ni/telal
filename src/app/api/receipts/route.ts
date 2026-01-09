@@ -1,54 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readData, writeData } from "@/lib/db";
-import type { Receipt } from "@/types";
+import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/auth-helpers";
 
 // Generate next receipt number in TPL-XXXX format
-function generateReceiptNumber(receipts: Receipt[]): string {
-    if (receipts.length === 0) {
+async function generateReceiptNumber(): Promise<string> {
+    const receipts = await prisma.receipt.findMany({
+        orderBy: { receiptNo: 'desc' },
+        take: 1,
+    });
+
+    if (!receipts || receipts.length === 0) {
         return "TPL-0001";
     }
 
-    // Find highest number
-    const numbers = receipts
-        .map(r => {
-            const match = r.receiptNo.match(/TPL-(\d+)/);
-            return match ? parseInt(match[1], 10) : 0;
-        })
-        .filter(n => !isNaN(n));
-
-    const maxNumber = numbers.length > 0 ? Math.max(...numbers) : 0;
-    const nextNumber = maxNumber + 1;
+    const lastReceiptNo = receipts[0].receiptNo;
+    const match = lastReceiptNo?.match(/TPL-(\d+)/);
+    const lastNumber = match ? parseInt(match[1], 10) : 0;
+    const nextNumber = lastNumber + 1;
 
     return `TPL-${nextNumber.toString().padStart(4, "0")}`;
 }
 
-// GET /api/receipts - Get all receipts with customer and property data
+// GET /api/receipts - Get all receipts with rental data
 export async function GET() {
+    const session = await requireAuth();
+    if (session instanceof NextResponse) return session;
+
     try {
-        const data = readData();
-
-        // Join receipts with customer and property data
-        const receiptsWithDetails = data.receipts.map(receipt => {
-            const customer = receipt.customerId
-                ? data.customers.find(c => c.id === receipt.customerId)
-                : undefined;
-            const property = receipt.propertyId
-                ? data.properties.find(p => p.id === receipt.propertyId)
-                : undefined;
-
-            return {
-                ...receipt,
-                customer,
-                property
-            };
+        const receipts = await prisma.receipt.findMany({
+            include: {
+                rental: true,
+            },
+            orderBy: { createdAt: 'desc' },
         });
 
-        // Sort by date descending (newest first)
-        receiptsWithDetails.sort((a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-
-        return NextResponse.json(receiptsWithDetails);
+        return NextResponse.json(receipts);
     } catch (error) {
         console.error("Error fetching receipts:", error);
         return NextResponse.json({ error: "Failed to fetch receipts" }, { status: 500 });
@@ -57,9 +43,11 @@ export async function GET() {
 
 // POST /api/receipts - Create a new receipt
 export async function POST(request: NextRequest) {
+    const session = await requireAuth();
+    if (session instanceof NextResponse) return session;
+
     try {
         const body = await request.json();
-        const data = readData();
 
         // Validation
         const errors: string[] = [];
@@ -84,27 +72,31 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: errors.join(", ") }, { status: 400 });
         }
 
-        // Generate receipt
-        const now = new Date().toISOString();
-        const receipts = (data.receipts || []).filter(r => 'receiptNo' in r) as Receipt[];
-        const receipt: Receipt = {
-            id: `rcpt-${Date.now()}`,
-            receiptNo: generateReceiptNumber(receipts),
-            type: body.type,
-            amount: parseFloat(body.amount),
-            paidBy: body.paidBy.trim(),
-            customerId: body.customerId || undefined,
-            propertyId: body.propertyId || undefined,
-            rentalId: body.rentalId || undefined,
-            paymentMethod: body.paymentMethod,
-            reference: body.reference || undefined,
-            description: body.description || "",
-            date: body.date || now.split("T")[0],
-            createdAt: now,
-        };
+        // Generate receipt number
+        const receiptNo = body.receiptNo || await generateReceiptNumber();
 
-        data.receipts.push(receipt);
-        writeData(data);
+        // Convert payment method to uppercase enum value
+        const paymentMethod = body.paymentMethod.toUpperCase();
+
+        const receipt = await prisma.receipt.create({
+            data: {
+                receiptNo,
+                type: body.type,
+                amount: parseFloat(body.amount),
+                paidBy: body.paidBy.trim(),
+                customerId: body.customerId || null,
+                propertyId: body.propertyId || null,
+                projectId: body.projectId || null,
+                rentalId: body.rentalId || null,
+                paymentMethod,
+                reference: body.reference || null,
+                description: body.description || '',
+                date: body.date ? new Date(body.date) : new Date(),
+            },
+            include: {
+                rental: true,
+            },
+        });
 
         return NextResponse.json(receipt, { status: 201 });
     } catch (error) {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readData, writeData } from "@/lib/db";
-import type { RentalContract } from "@/types";
+import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/auth-helpers";
 
 // Helper to generate contract number
 function generateContractNumber(): string {
@@ -14,53 +14,58 @@ function generateContractNumber(): string {
 
 // GET /api/rental-contracts - Get all rental contracts
 export async function GET() {
+    const session = await requireAuth();
+    if (session instanceof NextResponse) return session;
+
     try {
-        const data = readData();
-        // Initialize rentalContracts array if it doesn't exist
-        if (!data.rentalContracts) {
-            data.rentalContracts = [];
-            writeData(data);
-        }
-        return NextResponse.json(data.rentalContracts);
+        const contracts = await prisma.rentalContract.findMany({
+            orderBy: { createdAt: 'desc' },
+        });
+
+        return NextResponse.json(contracts);
     } catch (error) {
+        console.error("Error fetching contracts:", error);
         return NextResponse.json({ error: "Failed to fetch contracts" }, { status: 500 });
     }
 }
 
 // POST /api/rental-contracts - Create a new rental contract
 export async function POST(request: NextRequest) {
+    const session = await requireAuth();
+    if (session instanceof NextResponse) return session;
+
     try {
-        const contract: RentalContract = await request.json();
+        const body = await request.json();
 
         // Validation - required fields
         const errors: string[] = [];
 
-        if (!contract.landlordName?.trim()) {
+        if (!body.landlordName?.trim()) {
             errors.push("Landlord name is required");
         }
-        if (!contract.tenantName?.trim()) {
+        if (!body.tenantName?.trim()) {
             errors.push("Tenant name is required");
         }
-        if (!contract.tenantIdPassport?.trim()) {
+        if (!body.tenantIdPassport?.trim()) {
             errors.push("Tenant ID/Passport is required");
         }
-        if (!contract.tenantPhone?.trim()) {
+        if (!body.tenantPhone?.trim()) {
             errors.push("Tenant phone is required");
         }
-        if (!contract.validFrom) {
+        if (!body.validFrom) {
             errors.push("Contract start date is required");
         }
-        if (!contract.validTo) {
+        if (!body.validTo) {
             errors.push("Contract end date is required");
         }
-        if (!contract.monthlyRent || contract.monthlyRent <= 0) {
+        if (!body.monthlyRent || body.monthlyRent <= 0) {
             errors.push("Monthly rent must be greater than 0");
         }
 
         // Validate dates
-        if (contract.validFrom && contract.validTo) {
-            const startDate = new Date(contract.validFrom);
-            const endDate = new Date(contract.validTo);
+        if (body.validFrom && body.validTo) {
+            const startDate = new Date(body.validFrom);
+            const endDate = new Date(body.validTo);
             if (endDate <= startDate) {
                 errors.push("Contract end date must be after start date");
             }
@@ -70,35 +75,51 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: errors.join(", ") }, { status: 400 });
         }
 
-        const data = readData();
+        // Generate contract number if not present
+        const contractNumber = body.contractNumber || generateContractNumber();
 
-        // Initialize array if needed
-        if (!data.rentalContracts) {
-            data.rentalContracts = [];
-        }
+        // Convert status and payment frequency to uppercase enum values
+        const status = body.status ? body.status.toUpperCase() : 'DRAFT';
+        const paymentFrequency = body.paymentFrequency ? body.paymentFrequency.toUpperCase() : 'MONTHLY';
 
-        // Ensure ID and contract number exist
-        if (!contract.id) {
-            contract.id = `rc-${Date.now()}`;
-        }
-        if (!contract.contractNumber) {
-            contract.contractNumber = generateContractNumber();
-        }
-
-        // Set timestamps
-        const now = new Date().toISOString();
-        contract.createdAt = contract.createdAt || now;
-        contract.updatedAt = now;
-
-        // Set defaults
-        contract.type = contract.type || "rental";
-        contract.status = contract.status || "draft";
-
-        data.rentalContracts.push(contract);
-        writeData(data);
+        const contract = await prisma.rentalContract.create({
+            data: {
+                contractNumber,
+                type: 'RENTAL',
+                status,
+                // Landlord
+                landlordName: body.landlordName.trim(),
+                landlordCR: body.landlordCR || '',
+                landlordPOBox: body.landlordPOBox || '',
+                landlordPostalCode: body.landlordPostalCode || '',
+                landlordAddress: body.landlordAddress || '',
+                // Tenant
+                tenantName: body.tenantName.trim(),
+                tenantIdPassport: body.tenantIdPassport.trim(),
+                tenantLabourCard: body.tenantLabourCard || null,
+                tenantPhone: body.tenantPhone.trim(),
+                tenantEmail: body.tenantEmail || '',
+                tenantSponsor: body.tenantSponsor || null,
+                tenantCR: body.tenantCR || null,
+                // Contract Terms
+                validFrom: new Date(body.validFrom),
+                validTo: new Date(body.validTo),
+                agreementPeriod: body.agreementPeriod || '',
+                monthlyRent: body.monthlyRent,
+                paymentFrequency,
+                // Signatures
+                landlordSignature: body.landlordSignature || '',
+                landlordSignDate: body.landlordSignDate ? new Date(body.landlordSignDate) : new Date(),
+                tenantSignature: body.tenantSignature || '',
+                tenantSignDate: body.tenantSignDate ? new Date(body.tenantSignDate) : new Date(),
+                // Meta
+                pdfUrl: body.pdfUrl || null,
+            },
+        });
 
         return NextResponse.json(contract, { status: 201 });
     } catch (error) {
+        console.error("Error creating contract:", error);
         return NextResponse.json({ error: "Failed to create contract" }, { status: 500 });
     }
 }

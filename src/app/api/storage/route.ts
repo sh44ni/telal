@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readData, writeData } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-helpers";
 import fs from "fs";
 import path from "path";
@@ -8,7 +8,6 @@ import path from "path";
 export const runtime = "nodejs";
 
 const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads");
-const DB_PATH = path.join(process.cwd(), "data", "db.json");
 
 // Helper to calculate directory size recursively
 function getDirectorySize(dirPath: string): number {
@@ -42,8 +41,7 @@ export async function GET() {
 
         // Calculate actual user data size
         const uploadsSize = getDirectorySize(UPLOADS_DIR);
-        const dbSize = fs.existsSync(DB_PATH) ? fs.statSync(DB_PATH).size : 0;
-        const dataSize = uploadsSize + dbSize;
+        const dataSize = uploadsSize;
 
         return NextResponse.json({
             total: TOTAL_STORAGE,
@@ -91,21 +89,18 @@ export async function DELETE(request: NextRequest) {
             }
         }
 
-        // 2. Reset database to empty defaults (preserve users for auth)
-        const currentData = readData();
-        const emptyData = {
-            users: currentData.users, // Keep users so they can still log in
-            projects: [],
-            properties: [],
-            customers: [],
-            rentals: [],
-            receipts: [],
-            contracts: [],
-            documents: [],
-            rentalContracts: [],
-            transactions: [],
-        };
-        writeData(emptyData);
+        // 2. Delete all data from database (using Prisma deleteMany)
+        // Delete in order to respect foreign key constraints
+        await prisma.receipt.deleteMany({});
+        await prisma.transaction.deleteMany({});
+        await prisma.rental.deleteMany({});
+        await prisma.contract.deleteMany({});
+        await prisma.rentalContract.deleteMany({});
+        await prisma.saleContract.deleteMany({});
+        await prisma.document.deleteMany({});
+        await prisma.property.deleteMany({});
+        await prisma.customer.deleteMany({});
+        await prisma.project.deleteMany({});
 
         return NextResponse.json({
             success: true,

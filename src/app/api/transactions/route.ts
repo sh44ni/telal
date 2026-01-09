@@ -1,23 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readData, writeData } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-helpers";
-import type { Transaction } from "@/types";
 
 // Generate transaction number in TPL-XXXX format
-function generateTransactionNumber(transactions: Transaction[]): string {
+async function generateTransactionNumber(): Promise<string> {
+    const transactions = await prisma.transaction.findMany({
+        orderBy: { transactionNo: 'desc' },
+        take: 1,
+    });
+
     if (!transactions || transactions.length === 0) {
         return "TPL-0001";
     }
 
-    const numbers = transactions
-        .map(t => {
-            const match = t.transactionNo?.match(/TPL-(\d+)/);
-            return match ? parseInt(match[1], 10) : 0;
-        })
-        .filter(n => !isNaN(n));
-
-    const maxNumber = numbers.length > 0 ? Math.max(...numbers) : 0;
-    const nextNumber = maxNumber + 1;
+    const lastTransactionNo = transactions[0].transactionNo;
+    const match = lastTransactionNo?.match(/TPL-(\d+)/);
+    const lastNumber = match ? parseInt(match[1], 10) : 0;
+    const nextNumber = lastNumber + 1;
 
     return `TPL-${nextNumber.toString().padStart(4, "0")}`;
 }
@@ -28,44 +27,38 @@ export async function GET(request: NextRequest) {
     if (session instanceof NextResponse) return session;
 
     try {
-        const data = readData();
         const { searchParams } = new URL(request.url);
         const category = searchParams.get("category");
         const type = searchParams.get("type");
         const propertyId = searchParams.get("propertyId");
 
-        // Cast receipts to any[] since it can contain both Receipt and Transaction
-        let transactions = (data.receipts || []) as any[];
+        // Build query with optional filters
+        const where: any = {};
 
-        // Filter by category (only Transaction objects have category)
         if (category) {
-            transactions = transactions.filter(t => t.category === category);
+            where.category = category.toUpperCase();
         }
 
-        // Filter by type
         if (type) {
-            transactions = transactions.filter(t => t.type === type);
+            where.type = type;
         }
 
-        // Filter by property
         if (propertyId) {
-            transactions = transactions.filter(t => t.propertyId === propertyId);
+            where.propertyId = propertyId;
         }
 
-        // Join with related data
-        const transactionsWithDetails = transactions.map(transaction => ({
-            ...transaction,
-            customer: data.customers.find(c => c.id === transaction.customerId),
-            property: data.properties.find(p => p.id === transaction.propertyId),
-            project: data.projects.find(p => p.id === transaction.projectId),
-        }));
+        const transactions = await prisma.transaction.findMany({
+            where,
+            include: {
+                customer: true,
+                property: true,
+                project: true,
+                rental: true,
+            },
+            orderBy: { date: 'desc' },
+        });
 
-        // Sort by date descending (newest first)
-        transactionsWithDetails.sort((a, b) =>
-            new Date(b.date).getTime() - new Date(a.date).getTime()
-        );
-
-        return NextResponse.json(transactionsWithDetails);
+        return NextResponse.json(transactions);
     } catch (error) {
         console.error("Error fetching transactions:", error);
         return NextResponse.json({ error: "Failed to fetch transactions" }, { status: 500 });
@@ -79,7 +72,6 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const data = readData();
 
         // Validate required fields
         // Customer is only required for income transactions
@@ -100,80 +92,109 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Valid amount is required" }, { status: 400 });
         }
 
-        // Initialize receipts array if it doesn't exist
-        if (!data.receipts) {
-            data.receipts = [];
-        }
-
         // Generate transaction number
-        const transactionNo = generateTransactionNumber((data.receipts || []) as any[]);
+        const transactionNo = body.transactionNo || await generateTransactionNumber();
 
         // Get customer name for paidBy if not provided
-        const customer = data.customers.find(c => c.id === body.customerId);
-        const paidBy = body.paidBy || customer?.name || "Unknown";
+        let paidBy = body.paidBy || "Unknown";
+        if (body.customerId && !body.paidBy) {
+            const customer = await prisma.customer.findUnique({
+                where: { id: body.customerId },
+            });
+            paidBy = customer?.name || "Unknown";
+        }
+
+        // Convert category and payment method to uppercase enum values
+        const category = body.category ? body.category.toUpperCase() : 'INCOME';
+        const paymentMethod = body.paymentMethod ? body.paymentMethod.toUpperCase() : 'CASH';
 
         // Create new transaction
-        const newTransaction: Transaction = {
-            id: `txn-${Date.now()}`,
-            transactionNo,
-            projectId: body.projectId,
-            propertyId: body.propertyId,
-            customerId: body.customerId,
-            category: body.category || "income",
-            type: body.type || "rent_payment",
-            amount: parseFloat(body.amount),
-            paidBy,
-            paymentMethod: body.paymentMethod || "cash",
-            isSaleTransaction: body.isSaleTransaction || body.type === "sale_payment",
-            saleDetails: body.saleDetails,
-            rentalId: body.rentalId,
-            reference: body.reference,
-            description: body.description || "",
-            date: body.date || new Date().toISOString().split("T")[0],
-            createdAt: new Date().toISOString(),
-        };
+        const newTransaction = await prisma.transaction.create({
+            data: {
+                transactionNo,
+                projectId: body.projectId,
+                propertyId: body.propertyId,
+                customerId: body.customerId,
+                category,
+                type: body.type || "rent_payment",
+                amount: parseFloat(body.amount),
+                paidBy,
+                paymentMethod,
+                isSaleTransaction: body.isSaleTransaction || body.type === "sale_payment",
+                saleDetails: body.saleDetails || null,
+                rentalId: body.rentalId || null,
+                reference: body.reference || null,
+                description: body.description || "",
+                date: body.date ? new Date(body.date) : new Date(),
+            },
+            include: {
+                customer: true,
+                property: true,
+                project: true,
+                rental: true,
+            },
+        });
 
         // Handle sale transaction - auto-mark property as sold
         if (body.type === "sale_payment" && body.saleDetails) {
-            const property = data.properties.find(p => p.id === body.propertyId);
+            const property = await prisma.property.findUnique({
+                where: { id: body.propertyId },
+            });
 
             if (property) {
                 // Check if this is the first sale payment for this property
-                const existingSalePayments = data.receipts.filter(
-                    t => t.propertyId === body.propertyId && t.type === "sale_payment"
-                );
+                const existingSalePayments = await prisma.transaction.findMany({
+                    where: {
+                        propertyId: body.propertyId,
+                        type: "sale_payment",
+                    },
+                });
 
-                if (existingSalePayments.length === 0) {
+                if (existingSalePayments.length === 1) {
                     // First sale payment - mark property as sold
-                    property.status = "sold";
-                    property.saleInfo = {
-                        buyerId: body.customerId,
-                        saleDate: body.date || new Date().toISOString().split("T")[0],
-                        totalPrice: body.saleDetails.totalPrice,
-                        paidAmount: parseFloat(body.amount),
-                        remainingAmount: body.saleDetails.totalPrice - parseFloat(body.amount),
-                        paymentStatus: parseFloat(body.amount) >= body.saleDetails.totalPrice ? "completed" : "partial",
-                    };
+                    await prisma.property.update({
+                        where: { id: body.propertyId },
+                        data: {
+                            status: 'SOLD',
+                            saleInfo: {
+                                buyerId: body.customerId,
+                                saleDate: body.date || new Date().toISOString().split("T")[0],
+                                totalPrice: body.saleDetails.totalPrice,
+                                paidAmount: parseFloat(body.amount),
+                                remainingAmount: body.saleDetails.totalPrice - parseFloat(body.amount),
+                                paymentStatus: parseFloat(body.amount) >= body.saleDetails.totalPrice ? "completed" : "partial",
+                            },
+                        },
+                    });
                 } else {
                     // Subsequent payment - update totals
-                    if (property.saleInfo) {
-                        property.saleInfo.paidAmount += parseFloat(body.amount);
-                        property.saleInfo.remainingAmount = property.saleInfo.totalPrice - property.saleInfo.paidAmount;
-                        property.saleInfo.paymentStatus = property.saleInfo.remainingAmount <= 0 ? "completed" : "partial";
-                    }
-                }
+                    const saleInfo = property.saleInfo as any;
+                    if (saleInfo) {
+                        const newPaidAmount = (saleInfo.paidAmount || 0) + parseFloat(body.amount);
+                        const newRemainingAmount = (saleInfo.totalPrice || 0) - newPaidAmount;
 
-                // Update the property in the array
-                const propertyIndex = data.properties.findIndex(p => p.id === body.propertyId);
-                if (propertyIndex !== -1) {
-                    data.properties[propertyIndex] = property;
+                        await prisma.property.update({
+                            where: { id: body.propertyId },
+                            data: {
+                                saleInfo: {
+                                    ...saleInfo,
+                                    paidAmount: newPaidAmount,
+                                    remainingAmount: newRemainingAmount,
+                                    paymentStatus: newRemainingAmount <= 0 ? "completed" : "partial",
+                                },
+                            },
+                        });
+                    }
                 }
             }
         }
 
         // Update rental if it's a rent payment
         if (body.type === "rent_payment" && body.rentalId) {
-            const rental = data.rentals.find(r => r.id === body.rentalId);
+            const rental = await prisma.rental.findUnique({
+                where: { id: body.rentalId },
+            });
+
             if (rental) {
                 // Calculate how many months this payment covers
                 const monthsCovered = Math.floor(parseFloat(body.amount) / rental.monthlyRent);
@@ -181,18 +202,20 @@ export async function POST(request: NextRequest) {
                 // Update paidUntil date
                 const currentPaidUntil = new Date(rental.paidUntil);
                 currentPaidUntil.setMonth(currentPaidUntil.getMonth() + monthsCovered);
-                rental.paidUntil = currentPaidUntil.toISOString().split("T")[0];
 
                 // Update payment status
                 const today = new Date();
-                rental.paymentStatus = currentPaidUntil >= today ? "paid" : "overdue";
-                rental.updatedAt = new Date().toISOString();
+                const paymentStatus = currentPaidUntil >= today ? 'PAID' : 'OVERDUE';
+
+                await prisma.rental.update({
+                    where: { id: body.rentalId },
+                    data: {
+                        paidUntil: currentPaidUntil,
+                        paymentStatus,
+                    },
+                });
             }
         }
-
-        // Add transaction to database
-        data.receipts.push(newTransaction);
-        writeData(data);
 
         return NextResponse.json(newTransaction, { status: 201 });
     } catch (error) {

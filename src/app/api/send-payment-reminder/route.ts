@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readData } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/auth-helpers";
 import { sendEmail, generateLatePaymentEmail } from "@/lib/email";
 
 // POST /api/send-payment-reminder - Send late payment reminder email
 export async function POST(request: NextRequest) {
+    const session = await requireAuth();
+    if (session instanceof NextResponse) return session;
+
     try {
         const body = await request.json();
         const { rentalId } = body;
@@ -12,28 +16,21 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Rental ID is required" }, { status: 400 });
         }
 
-        const data = readData();
+        // Find the rental with related tenant and property
+        const rental = await prisma.rental.findUnique({
+            where: { id: rentalId },
+            include: {
+                tenant: true,
+                property: true,
+            },
+        });
 
-        // Find the rental
-        const rental = data.rentals.find(r => r.id === rentalId);
         if (!rental) {
             return NextResponse.json({ error: "Rental not found" }, { status: 404 });
         }
 
-        // Find tenant (customer)
-        const tenant = data.customers.find(c => c.id === rental.tenantId);
-        if (!tenant) {
-            return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
-        }
-
-        if (!tenant.email) {
+        if (!rental.tenant.email) {
             return NextResponse.json({ error: "Tenant has no email address" }, { status: 400 });
-        }
-
-        // Find property
-        const property = data.properties.find(p => p.id === rental.propertyId);
-        if (!property) {
-            return NextResponse.json({ error: "Property not found" }, { status: 404 });
         }
 
         // Calculate days overdue
@@ -51,8 +48,8 @@ export async function POST(request: NextRequest) {
 
         // Generate email HTML
         const emailHtml = generateLatePaymentEmail({
-            tenantName: tenant.name,
-            propertyName: property.name,
+            tenantName: rental.tenant.name,
+            propertyName: rental.property.name,
             amountDue: rental.monthlyRent,
             daysOverdue,
             dueDate,
@@ -60,15 +57,15 @@ export async function POST(request: NextRequest) {
 
         // Send email
         const result = await sendEmail({
-            to: tenant.email,
-            subject: `Payment Reminder - ${property.name}`,
+            to: rental.tenant.email,
+            subject: `Payment Reminder - ${rental.property.name}`,
             html: emailHtml,
         });
 
         if (result.success) {
             return NextResponse.json({
                 success: true,
-                message: `Payment reminder sent to ${tenant.email}`,
+                message: `Payment reminder sent to ${rental.tenant.email}`,
                 emailId: result.id,
             });
         } else {
@@ -85,34 +82,41 @@ export async function POST(request: NextRequest) {
 
 // GET /api/send-payment-reminder - Get all overdue rentals
 export async function GET() {
+    const session = await requireAuth();
+    if (session instanceof NextResponse) return session;
+
     try {
-        const data = readData();
         const today = new Date();
 
         // Find overdue rentals
-        const overdueRentals = data.rentals
-            .filter(rental => {
-                const paidUntil = new Date(rental.paidUntil);
-                return paidUntil < today;
-            })
-            .map(rental => {
-                const tenant = data.customers.find(c => c.id === rental.tenantId);
-                const property = data.properties.find(p => p.id === rental.propertyId);
-                const paidUntilDate = new Date(rental.paidUntil);
-                const daysOverdue = Math.floor((today.getTime() - paidUntilDate.getTime()) / (1000 * 60 * 60 * 24));
+        const overdueRentals = await prisma.rental.findMany({
+            where: {
+                paidUntil: {
+                    lt: today,
+                },
+            },
+            include: {
+                tenant: true,
+                property: true,
+            },
+        });
 
-                return {
-                    rentalId: rental.id,
-                    tenantName: tenant?.name || "Unknown",
-                    tenantEmail: tenant?.email || null,
-                    propertyName: property?.name || "Unknown",
-                    monthlyRent: rental.monthlyRent,
-                    paidUntil: rental.paidUntil,
-                    daysOverdue,
-                };
-            });
+        const formattedRentals = overdueRentals.map(rental => {
+            const paidUntilDate = new Date(rental.paidUntil);
+            const daysOverdue = Math.floor((today.getTime() - paidUntilDate.getTime()) / (1000 * 60 * 60 * 24));
 
-        return NextResponse.json(overdueRentals);
+            return {
+                rentalId: rental.id,
+                tenantName: rental.tenant.name,
+                tenantEmail: rental.tenant.email,
+                propertyName: rental.property.name,
+                monthlyRent: rental.monthlyRent,
+                paidUntil: rental.paidUntil,
+                daysOverdue,
+            };
+        });
+
+        return NextResponse.json(formattedRentals);
     } catch (error) {
         console.error("Error fetching overdue rentals:", error);
         return NextResponse.json({ error: "Failed to fetch overdue rentals" }, { status: 500 });

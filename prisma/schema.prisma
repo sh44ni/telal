@@ -1,0 +1,441 @@
+// Prisma Schema for Real Estate Management System
+// This schema defines the database structure for PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============ Enums ============
+
+enum Role {
+  ADMIN
+  MANAGER
+  USER
+}
+
+enum ProjectStatus {
+  IN_PROGRESS
+  COMPLETED
+  ON_HOLD
+  CANCELLED
+}
+
+enum PropertyType {
+  APARTMENT
+  VILLA
+  SHOP
+  OFFICE
+  LAND
+  WAREHOUSE
+}
+
+enum PropertyStatus {
+  AVAILABLE
+  RENTED
+  SOLD
+  UNDER_MAINTENANCE
+}
+
+enum CustomerType {
+  BUYER
+  TENANT
+  LEAD
+  OWNER
+}
+
+enum PaymentStatus {
+  PAID
+  UNPAID
+  PARTIALLY_PAID
+  OVERDUE
+}
+
+enum ContractType {
+  SALE
+  RENTAL
+}
+
+enum ContractStatus {
+  DRAFT
+  SIGNED
+  EXPIRED
+  CANCELLED
+}
+
+enum PaymentFrequency {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum TransactionCategory {
+  INCOME
+  EXPENSE
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CHEQUE
+  CARD
+}
+
+enum DocumentCategory {
+  CONTRACTS
+  RECEIPTS
+  IDENTITIES
+  PROPERTY
+  OTHER
+}
+
+// ============ Models ============
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String   // bcrypt hashed
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  projectId   String        @unique // Searchable ID like "PRJ-0001"
+  name        String
+  description String        @default("")
+  budget      Float
+  spent       Float         @default(0)
+  completion  Int           @default(0) // 0-100
+  status      ProjectStatus @default(IN_PROGRESS)
+  startDate   DateTime
+  endDate     DateTime
+  costs       Json          // { materials: number, labor: number, overhead: number }
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  properties   Property[]
+  transactions Transaction[]
+
+  @@index([projectId])
+  @@index([status])
+}
+
+model Property {
+  id           String         @id @default(cuid())
+  propertyId   String         @unique // Searchable ID like "PRP-0001"
+  name         String
+  type         PropertyType
+  status       PropertyStatus @default(AVAILABLE)
+  price        Float
+  rentalPrice  Float?
+  area         Float
+  bedrooms     Int?
+  bathrooms    Int?
+  location     String
+  address      String
+  description  String         @default("")
+  features     String[]       // Array of features
+  images       String[]       // Array of image URLs
+  saleInfo     Json?          // { buyerId, saleDate, totalPrice, paidAmount, remainingAmount, paymentStatus }
+  projectId    String?
+  ownerId      String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  // Relations
+  project      Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  rentals      Rental[]
+  transactions Transaction[]
+  contracts    Contract[]
+  documents    Document[]
+
+  @@index([propertyId])
+  @@index([status])
+  @@index([type])
+  @@index([projectId])
+}
+
+model Customer {
+  id                  String       @id @default(cuid())
+  customerId          String       @unique // Searchable ID like "CUS-0001"
+  name                String
+  type                CustomerType
+  email               String?
+  phone               String
+  alternatePhone      String?
+  address             String
+  emiratesId          String?
+  passportNo          String?
+  nationality         String?
+  notes               String?
+  assignedPropertyIds String[]     // Array of property IDs
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  // Relations
+  rentals             Rental[]
+  transactions        Transaction[]
+  contracts           Contract[]
+  saleContracts       SaleContract[] @relation("SaleContractBuyer")
+  sellerContracts     SaleContract[] @relation("SaleContractSeller")
+
+  @@index([customerId])
+  @@index([email])
+  @@index([type])
+  @@index([phone])
+}
+
+model Rental {
+  id            String        @id @default(cuid())
+  rentalId      String        @unique // Searchable ID like "RNT-0001"
+  propertyId    String
+  tenantId      String
+  monthlyRent   Float
+  depositAmount Float
+  leaseStart    DateTime
+  leaseEnd      DateTime
+  dueDay        Int           // 1-31
+  paymentStatus PaymentStatus @default(UNPAID)
+  paidUntil     DateTime
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relations
+  property      Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  tenant        Customer      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  receipts      Receipt[]
+  transactions  Transaction[]
+
+  @@index([rentalId])
+  @@index([propertyId])
+  @@index([tenantId])
+  @@index([paymentStatus])
+}
+
+model Receipt {
+  id            String        @id @default(cuid())
+  receiptNo     String        @unique
+  type          String        // "rent" | "deposit" | "maintenance" | "other"
+  amount        Float
+  paidBy        String
+  customerId    String?
+  propertyId    String?
+  projectId     String?
+  rentalId      String?
+  paymentMethod PaymentMethod
+  reference     String?
+  description   String
+  date          DateTime
+  createdAt     DateTime      @default(now())
+
+  // Relations
+  rental        Rental?       @relation(fields: [rentalId], references: [id], onDelete: SetNull)
+
+  @@index([receiptNo])
+  @@index([customerId])
+  @@index([propertyId])
+  @@index([date])
+}
+
+model Transaction {
+  id              String              @id @default(cuid())
+  transactionNo   String              @unique // "TPL-XXXX" format
+  projectId       String
+  propertyId      String
+  customerId      String
+  category        TransactionCategory
+  type            String              // IncomeType | ExpenseType
+  amount          Float
+  paidBy          String
+  paymentMethod   PaymentMethod
+  isSaleTransaction Boolean?          @default(false)
+  saleDetails     Json?               // { totalPrice, paidAmount, remainingAmount, paymentTerms, monthlyAmount, nextDueDate }
+  rentalId        String?
+  reference       String?
+  description     String
+  date            DateTime
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime?           @updatedAt
+
+  // Relations
+  project         Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  property        Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  customer        Customer            @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  rental          Rental?             @relation(fields: [rentalId], references: [id], onDelete: SetNull)
+
+  @@index([transactionNo])
+  @@index([projectId])
+  @@index([propertyId])
+  @@index([customerId])
+  @@index([category])
+  @@index([date])
+}
+
+model Contract {
+  id            String         @id @default(cuid())
+  contractNo    String         @unique
+  type          ContractType
+  status        ContractStatus @default(DRAFT)
+  propertyId    String
+  customerId    String
+  amount        Float
+  startDate     DateTime
+  endDate       DateTime
+  signatureDate DateTime?
+  terms         String         @db.Text
+  documentUrl   String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  // Relations
+  property      Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  customer      Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([contractNo])
+  @@index([propertyId])
+  @@index([customerId])
+  @@index([status])
+}
+
+model RentalContract {
+  id                 String            @id @default(cuid())
+  contractNumber     String            @unique // "RC-YYYYMMDD-XXX"
+  type               ContractType      @default(RENTAL)
+  status             ContractStatus    @default(DRAFT)
+
+  // Landlord (First Party)
+  landlordName       String
+  landlordCR         String
+  landlordPOBox      String
+  landlordPostalCode String
+  landlordAddress    String
+
+  // Tenant (Second Party)
+  tenantName         String
+  tenantIdPassport   String
+  tenantLabourCard   String?
+  tenantPhone        String
+  tenantEmail        String
+  tenantSponsor      String?
+  tenantCR           String?
+
+  // Contract Terms
+  validFrom          DateTime
+  validTo            DateTime
+  agreementPeriod    String            // e.g., "1 year", "6 months"
+  monthlyRent        Float
+  paymentFrequency   PaymentFrequency  @default(MONTHLY)
+
+  // Signatures
+  landlordSignature  String
+  landlordSignDate   DateTime
+  tenantSignature    String
+  tenantSignDate     DateTime
+
+  // Meta
+  pdfUrl             String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([contractNumber])
+  @@index([status])
+}
+
+model SaleContract {
+  id                      String         @id @default(cuid())
+  contractNumber          String         @unique // "SC-YYYYMMDD-XXX"
+  type                    ContractType   @default(SALE)
+  status                  ContractStatus @default(DRAFT)
+
+  // Seller (First Party)
+  sellerId                String
+  sellerName              String
+  sellerCR                String?
+  sellerNationality       String
+  sellerAddress           String
+  sellerPhone             String
+
+  // Buyer (Second Party)
+  buyerId                 String
+  buyerName               String
+  buyerCR                 String?
+  buyerNationality        String
+  buyerAddress            String
+  buyerPhone              String
+
+  // Property Details
+  propertyWilaya          String
+  propertyGovernorate     String
+  propertyPhase           String
+  propertyLandNumber      String
+  propertyArea            String         // in sqm
+
+  // Payment Terms
+  totalPrice              Float
+  totalPriceWords         String
+  depositAmount           Float
+  depositAmountWords      String
+  depositDate             DateTime
+  remainingAmount         Float
+  remainingAmountWords    String
+  remainingDueDate        DateTime
+  finalPaymentAmount      Float
+  finalPaymentAmountWords String
+
+  // Construction Timeline
+  constructionStartDate   DateTime
+  constructionEndDate     DateTime
+
+  // Notes/Disclaimer
+  notes                   String?        @db.Text
+
+  // Signatures
+  sellerSignature         String
+  buyerSignature          String
+
+  // Meta
+  pdfUrl                  String?
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
+
+  // Relations
+  seller                  Customer       @relation("SaleContractSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+  buyer                   Customer       @relation("SaleContractBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
+
+  @@index([contractNumber])
+  @@index([sellerId])
+  @@index([buyerId])
+  @@index([status])
+}
+
+model Document {
+  id           String           @id @default(cuid())
+  name         String
+  category     DocumentCategory
+  fileType     String
+  fileSize     Int
+  fileUrl      String
+  relatedType  String?          // "property" | "customer" | "rental" | "contract"
+  relatedId    String?
+  propertyId   String?
+  uploadDate   DateTime
+  createdAt    DateTime         @default(now())
+
+  // Relations
+  property     Property?        @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+
+  @@index([category])
+  @@index([relatedId])
+  @@index([propertyId])
+}

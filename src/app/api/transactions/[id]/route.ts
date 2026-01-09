@@ -1,30 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readData, writeData } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/auth-helpers";
 
 // GET /api/transactions/[id] - Get single transaction
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    const session = await requireAuth();
+    if (session instanceof NextResponse) return session;
+
     try {
         const { id } = await params;
-        const data = readData();
 
-        const transaction = data.receipts?.find(t => t.id === id);
+        const transaction = await prisma.transaction.findUnique({
+            where: { id },
+            include: {
+                customer: true,
+                property: true,
+                project: true,
+                rental: true,
+            },
+        });
 
         if (!transaction) {
             return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
         }
 
-        // Join with related data
-        const transactionWithDetails = {
-            ...transaction,
-            customer: data.customers.find(c => c.id === transaction.customerId),
-            property: data.properties.find(p => p.id === transaction.propertyId),
-            project: data.projects.find(p => p.id === transaction.projectId),
-        };
-
-        return NextResponse.json(transactionWithDetails);
+        return NextResponse.json(transaction);
     } catch (error) {
         console.error("Error fetching transaction:", error);
         return NextResponse.json({ error: "Failed to fetch transaction" }, { status: 500 });
@@ -36,27 +39,52 @@ export async function PUT(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    const session = await requireAuth();
+    if (session instanceof NextResponse) return session;
+
     try {
         const { id } = await params;
         const body = await request.json();
-        const data = readData();
 
-        const index = data.receipts?.findIndex(t => t.id === id);
+        // Check if transaction exists
+        const existingTransaction = await prisma.transaction.findUnique({
+            where: { id },
+        });
 
-        if (index === undefined || index === -1) {
+        if (!existingTransaction) {
             return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
         }
 
-        // Update transaction
-        data.receipts[index] = {
-            ...data.receipts[index],
-            ...body,
-            updatedAt: new Date().toISOString(),
-        };
+        // Prepare update data
+        const updateData: any = {};
 
-        writeData(data);
+        if (body.projectId !== undefined) updateData.projectId = body.projectId;
+        if (body.propertyId !== undefined) updateData.propertyId = body.propertyId;
+        if (body.customerId !== undefined) updateData.customerId = body.customerId;
+        if (body.category !== undefined) updateData.category = body.category.toUpperCase();
+        if (body.type !== undefined) updateData.type = body.type;
+        if (body.amount !== undefined) updateData.amount = parseFloat(body.amount);
+        if (body.paidBy !== undefined) updateData.paidBy = body.paidBy;
+        if (body.paymentMethod !== undefined) updateData.paymentMethod = body.paymentMethod.toUpperCase();
+        if (body.isSaleTransaction !== undefined) updateData.isSaleTransaction = body.isSaleTransaction;
+        if (body.saleDetails !== undefined) updateData.saleDetails = body.saleDetails;
+        if (body.rentalId !== undefined) updateData.rentalId = body.rentalId;
+        if (body.reference !== undefined) updateData.reference = body.reference;
+        if (body.description !== undefined) updateData.description = body.description;
+        if (body.date !== undefined) updateData.date = new Date(body.date);
 
-        return NextResponse.json(data.receipts[index]);
+        const transaction = await prisma.transaction.update({
+            where: { id },
+            data: updateData,
+            include: {
+                customer: true,
+                property: true,
+                project: true,
+                rental: true,
+            },
+        });
+
+        return NextResponse.json(transaction);
     } catch (error) {
         console.error("Error updating transaction:", error);
         return NextResponse.json({ error: "Failed to update transaction" }, { status: 500 });
@@ -68,19 +96,24 @@ export async function DELETE(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    const session = await requireAuth();
+    if (session instanceof NextResponse) return session;
+
     try {
         const { id } = await params;
-        const data = readData();
 
-        const index = data.receipts?.findIndex(t => t.id === id);
+        // Check if transaction exists
+        const existingTransaction = await prisma.transaction.findUnique({
+            where: { id },
+        });
 
-        if (index === undefined || index === -1) {
+        if (!existingTransaction) {
             return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
         }
 
-        // Remove transaction
-        data.receipts.splice(index, 1);
-        writeData(data);
+        await prisma.transaction.delete({
+            where: { id },
+        });
 
         return NextResponse.json({ success: true });
     } catch (error) {

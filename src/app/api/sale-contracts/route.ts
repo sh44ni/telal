@@ -1,17 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readData, writeData } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-helpers";
-import type { SaleContract } from "@/types";
 
 // Generate contract number in SC-YYYYMMDD-XXX format
-function generateContractNumber(contracts: SaleContract[]): string {
+async function generateContractNumber(): Promise<string> {
     const today = new Date();
     const dateStr = today.toISOString().split("T")[0].replace(/-/g, "");
 
     // Find existing contracts from today
-    const todayContracts = contracts.filter(c =>
-        c.contractNumber?.startsWith(`SC-${dateStr}`)
-    );
+    const todayContracts = await prisma.saleContract.findMany({
+        where: {
+            contractNumber: {
+                startsWith: `SC-${dateStr}`,
+            },
+        },
+    });
 
     const nextNumber = todayContracts.length + 1;
     return `SC-${dateStr}-${nextNumber.toString().padStart(3, "0")}`;
@@ -23,13 +26,13 @@ export async function GET() {
     if (session instanceof NextResponse) return session;
 
     try {
-        const data = readData();
-        const saleContracts = data.saleContracts || [];
-
-        // Sort by date descending
-        saleContracts.sort((a: SaleContract, b: SaleContract) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
+        const saleContracts = await prisma.saleContract.findMany({
+            include: {
+                seller: true,
+                buyer: true,
+            },
+            orderBy: { createdAt: 'desc' },
+        });
 
         return NextResponse.json(saleContracts);
     } catch (error) {
@@ -45,66 +48,64 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const data = readData();
-
-        // Initialize saleContracts array if it doesn't exist
-        if (!data.saleContracts) {
-            data.saleContracts = [];
-        }
 
         // Generate contract number
-        const contractNumber = generateContractNumber(data.saleContracts);
+        const contractNumber = body.contractNumber || await generateContractNumber();
 
-        const newContract: SaleContract = {
-            id: `sc-${Date.now()}`,
-            contractNumber,
-            type: "sale",
-            status: body.status || "signed",
-            // Seller
-            sellerId: body.sellerId || "",
-            sellerName: body.sellerName,
-            sellerCR: body.sellerCR,
-            sellerNationality: body.sellerNationality || "",
-            sellerAddress: body.sellerAddress || "",
-            sellerPhone: body.sellerPhone || "",
-            // Buyer
-            buyerId: body.buyerId || "",
-            buyerName: body.buyerName,
-            buyerCR: body.buyerCR,
-            buyerNationality: body.buyerNationality || "",
-            buyerAddress: body.buyerAddress || "",
-            buyerPhone: body.buyerPhone || "",
-            // Property
-            propertyWilaya: body.propertyWilaya || "",
-            propertyGovernorate: body.propertyGovernorate || "",
-            propertyPhase: body.propertyPhase || "",
-            propertyLandNumber: body.propertyLandNumber || "",
-            propertyArea: body.propertyArea || "",
-            // Payment
-            totalPrice: parseFloat(body.totalPrice) || 0,
-            totalPriceWords: body.totalPriceWords || "",
-            depositAmount: parseFloat(body.depositAmount) || 0,
-            depositAmountWords: body.depositAmountWords || "",
-            depositDate: body.depositDate || "",
-            remainingAmount: parseFloat(body.remainingAmount) || 0,
-            remainingAmountWords: body.remainingAmountWords || "",
-            remainingDueDate: body.remainingDueDate || "",
-            finalPaymentAmount: parseFloat(body.finalPaymentAmount) || 0,
-            finalPaymentAmountWords: body.finalPaymentAmountWords || "",
-            // Construction
-            constructionStartDate: body.constructionStartDate || "",
-            constructionEndDate: body.constructionEndDate || "",
-            notes: body.notes || "",
-            // Signatures
-            sellerSignature: body.sellerSignature || "",
-            buyerSignature: body.buyerSignature || "",
-            // Meta
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-        };
+        // Convert status to uppercase enum value
+        const status = body.status ? body.status.toUpperCase() : 'SIGNED';
 
-        data.saleContracts.push(newContract);
-        writeData(data);
+        const newContract = await prisma.saleContract.create({
+            data: {
+                contractNumber,
+                type: 'SALE',
+                status,
+                // Seller
+                sellerId: body.sellerId || "",
+                sellerName: body.sellerName,
+                sellerCR: body.sellerCR || null,
+                sellerNationality: body.sellerNationality || "",
+                sellerAddress: body.sellerAddress || "",
+                sellerPhone: body.sellerPhone || "",
+                // Buyer
+                buyerId: body.buyerId || "",
+                buyerName: body.buyerName,
+                buyerCR: body.buyerCR || null,
+                buyerNationality: body.buyerNationality || "",
+                buyerAddress: body.buyerAddress || "",
+                buyerPhone: body.buyerPhone || "",
+                // Property
+                propertyWilaya: body.propertyWilaya || "",
+                propertyGovernorate: body.propertyGovernorate || "",
+                propertyPhase: body.propertyPhase || "",
+                propertyLandNumber: body.propertyLandNumber || "",
+                propertyArea: body.propertyArea || "",
+                // Payment
+                totalPrice: parseFloat(body.totalPrice) || 0,
+                totalPriceWords: body.totalPriceWords || "",
+                depositAmount: parseFloat(body.depositAmount) || 0,
+                depositAmountWords: body.depositAmountWords || "",
+                depositDate: body.depositDate ? new Date(body.depositDate) : new Date(),
+                remainingAmount: parseFloat(body.remainingAmount) || 0,
+                remainingAmountWords: body.remainingAmountWords || "",
+                remainingDueDate: body.remainingDueDate ? new Date(body.remainingDueDate) : new Date(),
+                finalPaymentAmount: parseFloat(body.finalPaymentAmount) || 0,
+                finalPaymentAmountWords: body.finalPaymentAmountWords || "",
+                // Construction
+                constructionStartDate: body.constructionStartDate ? new Date(body.constructionStartDate) : new Date(),
+                constructionEndDate: body.constructionEndDate ? new Date(body.constructionEndDate) : new Date(),
+                notes: body.notes || null,
+                // Signatures
+                sellerSignature: body.sellerSignature || "",
+                buyerSignature: body.buyerSignature || "",
+                // Meta
+                pdfUrl: body.pdfUrl || null,
+            },
+            include: {
+                seller: true,
+                buyer: true,
+            },
+        });
 
         return NextResponse.json(newContract, { status: 201 });
     } catch (error) {

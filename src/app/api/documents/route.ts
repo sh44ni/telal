@@ -1,38 +1,58 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readData, writeData } from "@/lib/db";
-import type { Document } from "@/types";
+import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/auth-helpers";
 
 // GET /api/documents - Get all documents
 export async function GET() {
+    const session = await requireAuth();
+    if (session instanceof NextResponse) return session;
+
     try {
-        const data = readData();
-        return NextResponse.json(data.documents);
+        const documents = await prisma.document.findMany({
+            include: {
+                property: true,
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        return NextResponse.json(documents);
     } catch (error) {
+        console.error("Error fetching documents:", error);
         return NextResponse.json({ error: "Failed to fetch documents" }, { status: 500 });
     }
 }
 
 // POST /api/documents - Create a new document entry
 export async function POST(request: NextRequest) {
+    const session = await requireAuth();
+    if (session instanceof NextResponse) return session;
+
     try {
-        const document: Document = await request.json();
-        const data = readData();
+        const body = await request.json();
 
-        // Ensure ID exists
-        if (!document.id) {
-            document.id = `doc-${Date.now()}`;
-        }
+        // Convert category to uppercase enum value
+        const category = body.category ? body.category.toUpperCase() : 'OTHER';
 
-        // Set timestamps
-        const now = new Date().toISOString();
-        document.createdAt = document.createdAt || now;
-        document.uploadDate = document.uploadDate || now.split("T")[0];
-
-        data.documents.push(document);
-        writeData(data);
+        const document = await prisma.document.create({
+            data: {
+                name: body.name,
+                category,
+                fileType: body.fileType,
+                fileSize: body.fileSize,
+                fileUrl: body.fileUrl,
+                relatedType: body.relatedType || null,
+                relatedId: body.relatedId || null,
+                propertyId: body.propertyId || null,
+                uploadDate: body.uploadDate ? new Date(body.uploadDate) : new Date(),
+            },
+            include: {
+                property: true,
+            },
+        });
 
         return NextResponse.json(document, { status: 201 });
     } catch (error) {
+        console.error("Error creating document:", error);
         return NextResponse.json({ error: "Failed to create document" }, { status: 500 });
     }
 }

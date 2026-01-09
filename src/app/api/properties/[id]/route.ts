@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readData, writeData } from "@/lib/db";
-import type { Property } from "@/types";
+import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/auth-helpers";
 
 interface RouteParams {
     params: Promise<{ id: string }>;
@@ -8,10 +8,14 @@ interface RouteParams {
 
 // GET /api/properties/[id] - Get a single property
 export async function GET(request: NextRequest, { params }: RouteParams) {
+    const session = await requireAuth();
+    if (session instanceof NextResponse) return session;
+
     try {
         const { id } = await params;
-        const data = readData();
-        const property = data.properties.find((p: Property) => p.id === id);
+        const property = await prisma.property.findUnique({
+            where: { id },
+        });
 
         if (!property) {
             return NextResponse.json({ error: "Property not found" }, { status: 404 });
@@ -19,52 +23,85 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
         return NextResponse.json(property);
     } catch (error) {
+        console.error("Error fetching property:", error);
         return NextResponse.json({ error: "Failed to fetch property" }, { status: 500 });
     }
 }
 
 // PUT /api/properties/[id] - Update a property
 export async function PUT(request: NextRequest, { params }: RouteParams) {
+    const session = await requireAuth();
+    if (session instanceof NextResponse) return session;
+
     try {
         const { id } = await params;
-        const updates: Partial<Property> = await request.json();
-        const data = readData();
+        const body = await request.json();
 
-        const index = data.properties.findIndex((p: Property) => p.id === id);
-        if (index === -1) {
+        // Check if property exists
+        const existingProperty = await prisma.property.findUnique({
+            where: { id },
+        });
+
+        if (!existingProperty) {
             return NextResponse.json({ error: "Property not found" }, { status: 404 });
         }
 
-        // Merge updates with existing property
-        data.properties[index] = {
-            ...data.properties[index],
-            ...updates,
-            updatedAt: new Date().toISOString(),
-        };
+        // Prepare update data
+        const updateData: any = {};
 
-        writeData(data);
-        return NextResponse.json(data.properties[index]);
+        if (body.name !== undefined) updateData.name = body.name.trim();
+        if (body.type !== undefined) updateData.type = body.type.toUpperCase();
+        if (body.status !== undefined) updateData.status = body.status.toUpperCase();
+        if (body.price !== undefined) updateData.price = body.price;
+        if (body.rentalPrice !== undefined) updateData.rentalPrice = body.rentalPrice;
+        if (body.area !== undefined) updateData.area = body.area;
+        if (body.bedrooms !== undefined) updateData.bedrooms = body.bedrooms;
+        if (body.bathrooms !== undefined) updateData.bathrooms = body.bathrooms;
+        if (body.location !== undefined) updateData.location = body.location.trim();
+        if (body.address !== undefined) updateData.address = body.address;
+        if (body.description !== undefined) updateData.description = body.description;
+        if (body.features !== undefined) updateData.features = body.features;
+        if (body.images !== undefined) updateData.images = body.images;
+        if (body.saleInfo !== undefined) updateData.saleInfo = body.saleInfo;
+        if (body.projectId !== undefined) updateData.projectId = body.projectId;
+        if (body.ownerId !== undefined) updateData.ownerId = body.ownerId;
+
+        const property = await prisma.property.update({
+            where: { id },
+            data: updateData,
+        });
+
+        return NextResponse.json(property);
     } catch (error) {
+        console.error("Error updating property:", error);
         return NextResponse.json({ error: "Failed to update property" }, { status: 500 });
     }
 }
 
 // DELETE /api/properties/[id] - Delete a property
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
+    const session = await requireAuth();
+    if (session instanceof NextResponse) return session;
+
     try {
         const { id } = await params;
-        const data = readData();
 
-        const index = data.properties.findIndex((p: Property) => p.id === id);
-        if (index === -1) {
+        // Check if property exists
+        const existingProperty = await prisma.property.findUnique({
+            where: { id },
+        });
+
+        if (!existingProperty) {
             return NextResponse.json({ error: "Property not found" }, { status: 404 });
         }
 
-        data.properties.splice(index, 1);
-        writeData(data);
+        await prisma.property.delete({
+            where: { id },
+        });
 
         return NextResponse.json({ message: "Property deleted successfully" });
     } catch (error) {
+        console.error("Error deleting property:", error);
         return NextResponse.json({ error: "Failed to delete property" }, { status: 500 });
     }
 }

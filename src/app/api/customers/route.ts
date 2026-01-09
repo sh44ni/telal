@@ -1,23 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readData, writeData } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-helpers";
-import type { Customer } from "@/types";
 
 // Generate customer ID in CUS-XXXX format
-function generateCustomerId(customers: Customer[]): string {
+async function generateCustomerId(): Promise<string> {
+    const customers = await prisma.customer.findMany({
+        orderBy: { customerId: 'desc' },
+        take: 1,
+    });
+
     if (!customers || customers.length === 0) {
         return "CUS-0001";
     }
 
-    const numbers = customers
-        .map(c => {
-            const match = c.customerId?.match(/CUS-(\d+)/);
-            return match ? parseInt(match[1], 10) : 0;
-        })
-        .filter(n => !isNaN(n));
-
-    const maxNumber = numbers.length > 0 ? Math.max(...numbers) : 0;
-    const nextNumber = maxNumber + 1;
+    const lastCustomerId = customers[0].customerId;
+    const match = lastCustomerId?.match(/CUS-(\d+)/);
+    const lastNumber = match ? parseInt(match[1], 10) : 0;
+    const nextNumber = lastNumber + 1;
 
     return `CUS-${nextNumber.toString().padStart(4, "0")}`;
 }
@@ -29,23 +28,25 @@ export async function GET(request: NextRequest) {
     if (session instanceof NextResponse) return session;
 
     try {
-        const data = readData();
         const { searchParams } = new URL(request.url);
         const search = searchParams.get("search");
 
-        let customers = data.customers || [];
+        // Build query with optional search filter
+        const where = search ? {
+            OR: [
+                { name: { contains: search, mode: 'insensitive' as const } },
+                { customerId: { contains: search, mode: 'insensitive' as const } },
+            ],
+        } : {};
 
-        // Filter by search query (matches name or customerId)
-        if (search) {
-            const searchLower = search.toLowerCase();
-            customers = customers.filter(c =>
-                c.name?.toLowerCase().includes(searchLower) ||
-                c.customerId?.toLowerCase().includes(searchLower)
-            );
-        }
+        const customers = await prisma.customer.findMany({
+            where,
+            orderBy: { createdAt: 'desc' },
+        });
 
         return NextResponse.json(customers);
     } catch (error) {
+        console.error("Error fetching customers:", error);
         return NextResponse.json({ error: "Failed to fetch customers" }, { status: 500 });
     }
 }
@@ -57,18 +58,18 @@ export async function POST(request: NextRequest) {
     if (session instanceof NextResponse) return session;
 
     try {
-        const customer: Customer = await request.json();
+        const body = await request.json();
 
         // Validation - required fields
         const errors: string[] = [];
 
-        if (!customer.name?.trim()) {
+        if (!body.name?.trim()) {
             errors.push("Customer name is required");
         }
-        if (!customer.type) {
+        if (!body.type) {
             errors.push("Customer type is required");
         }
-        if (!customer.phone?.trim()) {
+        if (!body.phone?.trim()) {
             errors.push("Phone number is required");
         }
 
@@ -76,31 +77,32 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: errors.join(", ") }, { status: 400 });
         }
 
-        const data = readData();
-
-        // Ensure ID exists
-        if (!customer.id) {
-            customer.id = `cust-${Date.now()}`;
-        }
-
         // Auto-generate customerId if not provided
-        if (!customer.customerId) {
-            customer.customerId = generateCustomerId(data.customers);
-        }
+        const customerId = body.customerId || await generateCustomerId();
 
-        // Set timestamps
-        const now = new Date().toISOString();
-        customer.createdAt = customer.createdAt || now;
-        customer.updatedAt = now;
+        // Convert customer type to uppercase enum value
+        const customerType = body.type.toUpperCase();
 
-        // Set defaults
-        customer.assignedPropertyIds = customer.assignedPropertyIds || [];
-
-        data.customers.push(customer);
-        writeData(data);
+        const customer = await prisma.customer.create({
+            data: {
+                customerId,
+                name: body.name.trim(),
+                type: customerType,
+                email: body.email?.trim() || null,
+                phone: body.phone.trim(),
+                alternatePhone: body.alternatePhone?.trim() || null,
+                address: body.address || '',
+                emiratesId: body.emiratesId || null,
+                passportNo: body.passportNo || null,
+                nationality: body.nationality || null,
+                notes: body.notes || null,
+                assignedPropertyIds: body.assignedPropertyIds || [],
+            },
+        });
 
         return NextResponse.json(customer, { status: 201 });
     } catch (error) {
+        console.error("Error creating customer:", error);
         return NextResponse.json({ error: "Failed to create customer" }, { status: 500 });
     }
 }

@@ -1,34 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readData, writeData } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/auth-helpers";
 
 // GET /api/receipts/[id] - Get a single receipt
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    const session = await requireAuth();
+    if (session instanceof NextResponse) return session;
+
     try {
         const { id } = await params;
-        const data = readData();
 
-        const receipt = data.receipts.find(r => r.id === id);
+        const receipt = await prisma.receipt.findUnique({
+            where: { id },
+            include: {
+                rental: true,
+            },
+        });
 
         if (!receipt) {
             return NextResponse.json({ error: "Receipt not found" }, { status: 404 });
         }
 
-        // Add related data
-        const customer = receipt.customerId
-            ? data.customers.find(c => c.id === receipt.customerId)
-            : undefined;
-        const property = receipt.propertyId
-            ? data.properties.find(p => p.id === receipt.propertyId)
-            : undefined;
-
-        return NextResponse.json({
-            ...receipt,
-            customer,
-            property
-        });
+        return NextResponse.json(receipt);
     } catch (error) {
         console.error("Error fetching receipt:", error);
         return NextResponse.json({ error: "Failed to fetch receipt" }, { status: 500 });
@@ -40,37 +36,46 @@ export async function PUT(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    const session = await requireAuth();
+    if (session instanceof NextResponse) return session;
+
     try {
         const { id } = await params;
         const body = await request.json();
-        const data = readData();
 
-        const index = data.receipts.findIndex(r => r.id === id);
+        // Check if receipt exists
+        const existingReceipt = await prisma.receipt.findUnique({
+            where: { id },
+        });
 
-        if (index === -1) {
+        if (!existingReceipt) {
             return NextResponse.json({ error: "Receipt not found" }, { status: 404 });
         }
 
-        // Update receipt (preserve id and receiptNo)
-        const existingReceipt = data.receipts[index];
-        const updatedReceipt = {
-            ...existingReceipt,
-            type: body.type || existingReceipt.type,
-            amount: body.amount ? parseFloat(body.amount) : existingReceipt.amount,
-            paidBy: body.paidBy || existingReceipt.paidBy,
-            customerId: body.customerId !== undefined ? body.customerId : existingReceipt.customerId,
-            propertyId: body.propertyId !== undefined ? body.propertyId : existingReceipt.propertyId,
-            rentalId: body.rentalId !== undefined ? body.rentalId : existingReceipt.rentalId,
-            paymentMethod: body.paymentMethod || existingReceipt.paymentMethod,
-            reference: body.reference !== undefined ? body.reference : existingReceipt.reference,
-            description: body.description !== undefined ? body.description : existingReceipt.description,
-            date: body.date || existingReceipt.date,
-        };
+        // Prepare update data
+        const updateData: any = {};
 
-        data.receipts[index] = updatedReceipt;
-        writeData(data);
+        if (body.type !== undefined) updateData.type = body.type;
+        if (body.amount !== undefined) updateData.amount = parseFloat(body.amount);
+        if (body.paidBy !== undefined) updateData.paidBy = body.paidBy;
+        if (body.customerId !== undefined) updateData.customerId = body.customerId;
+        if (body.propertyId !== undefined) updateData.propertyId = body.propertyId;
+        if (body.projectId !== undefined) updateData.projectId = body.projectId;
+        if (body.rentalId !== undefined) updateData.rentalId = body.rentalId;
+        if (body.paymentMethod !== undefined) updateData.paymentMethod = body.paymentMethod.toUpperCase();
+        if (body.reference !== undefined) updateData.reference = body.reference;
+        if (body.description !== undefined) updateData.description = body.description;
+        if (body.date !== undefined) updateData.date = new Date(body.date);
 
-        return NextResponse.json(updatedReceipt);
+        const receipt = await prisma.receipt.update({
+            where: { id },
+            data: updateData,
+            include: {
+                rental: true,
+            },
+        });
+
+        return NextResponse.json(receipt);
     } catch (error) {
         console.error("Error updating receipt:", error);
         return NextResponse.json({ error: "Failed to update receipt" }, { status: 500 });
@@ -82,18 +87,24 @@ export async function DELETE(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    const session = await requireAuth();
+    if (session instanceof NextResponse) return session;
+
     try {
         const { id } = await params;
-        const data = readData();
 
-        const index = data.receipts.findIndex(r => r.id === id);
+        // Check if receipt exists
+        const existingReceipt = await prisma.receipt.findUnique({
+            where: { id },
+        });
 
-        if (index === -1) {
+        if (!existingReceipt) {
             return NextResponse.json({ error: "Receipt not found" }, { status: 404 });
         }
 
-        data.receipts.splice(index, 1);
-        writeData(data);
+        await prisma.receipt.delete({
+            where: { id },
+        });
 
         return NextResponse.json({ success: true });
     } catch (error) {

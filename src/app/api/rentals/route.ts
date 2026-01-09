@@ -1,23 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readData, writeData } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-helpers";
-import type { Rental } from "@/types";
 
 // Generate rental ID in RNT-XXXX format
-function generateRentalId(rentals: Rental[]): string {
+async function generateRentalId(): Promise<string> {
+    const rentals = await prisma.rental.findMany({
+        orderBy: { rentalId: 'desc' },
+        take: 1,
+    });
+
     if (!rentals || rentals.length === 0) {
         return "RNT-0001";
     }
 
-    const numbers = rentals
-        .map(r => {
-            const match = r.rentalId?.match(/RNT-(\d+)/);
-            return match ? parseInt(match[1], 10) : 0;
-        })
-        .filter(n => !isNaN(n));
-
-    const maxNumber = numbers.length > 0 ? Math.max(...numbers) : 0;
-    const nextNumber = maxNumber + 1;
+    const lastRentalId = rentals[0].rentalId;
+    const match = lastRentalId?.match(/RNT-(\d+)/);
+    const lastNumber = match ? parseInt(match[1], 10) : 0;
+    const nextNumber = lastNumber + 1;
 
     return `RNT-${nextNumber.toString().padStart(4, "0")}`;
 }
@@ -28,19 +27,17 @@ export async function GET() {
     if (session instanceof NextResponse) return session;
 
     try {
-        const data = readData();
-        // Join rentals with tenant and property data
-        const rentalsWithDetails = data.rentals.map(rental => {
-            const tenant = data.customers.find(c => c.id === rental.tenantId);
-            const property = data.properties.find(p => p.id === rental.propertyId);
-            return {
-                ...rental,
-                tenant,
-                property
-            };
+        const rentals = await prisma.rental.findMany({
+            include: {
+                tenant: true,
+                property: true,
+            },
+            orderBy: { createdAt: 'desc' },
         });
-        return NextResponse.json(rentalsWithDetails);
+
+        return NextResponse.json(rentals);
     } catch (error) {
+        console.error("Error fetching rentals:", error);
         return NextResponse.json({ error: "Failed to fetch rentals" }, { status: 500 });
     }
 }
@@ -51,48 +48,51 @@ export async function POST(request: NextRequest) {
     if (session instanceof NextResponse) return session;
 
     try {
-        const rental: Rental = await request.json();
-        const data = readData();
+        const body = await request.json();
 
         // Validation - required fields
         const errors: string[] = [];
 
-        if (!rental.propertyId) {
+        if (!body.propertyId) {
             errors.push("Property is required");
         } else {
             // Check if property exists
-            const propertyExists = data.properties.some(p => p.id === rental.propertyId);
+            const propertyExists = await prisma.property.findUnique({
+                where: { id: body.propertyId },
+            });
             if (!propertyExists) {
                 errors.push("Selected property does not exist");
             }
         }
 
-        if (!rental.tenantId) {
+        if (!body.tenantId) {
             errors.push("Tenant is required");
         } else {
             // Check if tenant exists
-            const tenantExists = data.customers.some(c => c.id === rental.tenantId);
+            const tenantExists = await prisma.customer.findUnique({
+                where: { id: body.tenantId },
+            });
             if (!tenantExists) {
                 errors.push("Selected tenant does not exist");
             }
         }
 
-        if (!rental.monthlyRent || rental.monthlyRent <= 0) {
+        if (!body.monthlyRent || body.monthlyRent <= 0) {
             errors.push("Monthly rent must be greater than 0");
         }
 
-        if (!rental.leaseStart) {
+        if (!body.leaseStart) {
             errors.push("Lease start date is required");
         }
 
-        if (!rental.leaseEnd) {
+        if (!body.leaseEnd) {
             errors.push("Lease end date is required");
         }
 
         // Validate lease dates
-        if (rental.leaseStart && rental.leaseEnd) {
-            const startDate = new Date(rental.leaseStart);
-            const endDate = new Date(rental.leaseEnd);
+        if (body.leaseStart && body.leaseEnd) {
+            const startDate = new Date(body.leaseStart);
+            const endDate = new Date(body.leaseEnd);
             if (endDate <= startDate) {
                 errors.push("Lease end date must be after start date");
             }
@@ -102,31 +102,35 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: errors.join(", ") }, { status: 400 });
         }
 
-        // Ensure ID exists
-        if (!rental.id) {
-            rental.id = `rent-${Date.now()}`;
-        }
-
         // Generate rental ID if not present
-        if (!rental.rentalId) {
-            rental.rentalId = generateRentalId(data.rentals);
-        }
+        const rentalId = body.rentalId || await generateRentalId();
 
-        // Set timestamps
-        const now = new Date().toISOString();
-        rental.createdAt = rental.createdAt || now;
-        rental.updatedAt = now;
+        // Convert payment status to uppercase enum value
+        const paymentStatus = body.paymentStatus ? body.paymentStatus.toUpperCase() : 'UNPAID';
 
-        // Set defaults
-        rental.paymentStatus = rental.paymentStatus || "unpaid";
-        rental.paidUntil = rental.paidUntil || rental.leaseStart;
-        rental.dueDay = rental.dueDay || 1;
-
-        data.rentals.push(rental);
-        writeData(data);
+        const rental = await prisma.rental.create({
+            data: {
+                rentalId,
+                propertyId: body.propertyId,
+                tenantId: body.tenantId,
+                monthlyRent: body.monthlyRent,
+                depositAmount: body.depositAmount || 0,
+                leaseStart: new Date(body.leaseStart),
+                leaseEnd: new Date(body.leaseEnd),
+                dueDay: body.dueDay || 1,
+                paymentStatus,
+                paidUntil: new Date(body.paidUntil || body.leaseStart),
+                notes: body.notes || null,
+            },
+            include: {
+                tenant: true,
+                property: true,
+            },
+        });
 
         return NextResponse.json(rental, { status: 201 });
     } catch (error) {
+        console.error("Error creating rental:", error);
         return NextResponse.json({ error: "Failed to create rental" }, { status: 500 });
     }
 }

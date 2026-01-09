@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readData } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-helpers";
 
 export async function GET(request: NextRequest) {
@@ -7,7 +7,6 @@ export async function GET(request: NextRequest) {
     if (session instanceof NextResponse) return session;
 
     try {
-        const data = readData();
         const { searchParams } = new URL(request.url);
         const period = searchParams.get("period") || "all";
 
@@ -33,11 +32,17 @@ export async function GET(request: NextRequest) {
                 break;
         }
 
-        // Filter transactions by date range
-        const transactions = (data.receipts || []).filter(t => {
-            if (!startDate) return true;
-            const txDate = new Date(t.date);
-            return txDate >= startDate && txDate <= now;
+        // Build where clause for date filtering
+        const dateWhere = startDate ? {
+            date: {
+                gte: startDate,
+                lte: now,
+            },
+        } : {};
+
+        // Fetch transactions
+        const transactions = await prisma.transaction.findMany({
+            where: dateWhere,
         });
 
         // Calculate financial metrics
@@ -55,19 +60,12 @@ export async function GET(request: NextRequest) {
                 monthlyData[monthKey] = { revenue: 0, expenses: 0 };
             }
 
-            // Check if it's a Transaction (has category) or Receipt (legacy)
-            if ('category' in t) {
-                if (t.category === "income") {
-                    revenue += t.amount || 0;
-                    monthlyData[monthKey].revenue += t.amount || 0;
-                } else if (t.category === "expense") {
-                    expenses += t.amount || 0;
-                    monthlyData[monthKey].expenses += t.amount || 0;
-                }
-            } else {
-                // Legacy receipts are income
+            if (t.category === "INCOME") {
                 revenue += t.amount || 0;
                 monthlyData[monthKey].revenue += t.amount || 0;
+            } else if (t.category === "EXPENSE") {
+                expenses += t.amount || 0;
+                monthlyData[monthKey].expenses += t.amount || 0;
             }
         });
 
@@ -88,26 +86,26 @@ export async function GET(request: NextRequest) {
             });
 
         // Calculate properties stats
-        const properties = data.properties || [];
+        const properties = await prisma.property.findMany();
         const propertiesStats = {
             total: properties.length,
-            available: properties.filter(p => p.status === "available").length,
-            rented: properties.filter(p => p.status === "rented").length,
-            sold: properties.filter(p => p.status === "sold").length,
-            underMaintenance: properties.filter(p => p.status === "under_maintenance").length,
+            available: properties.filter(p => p.status === "AVAILABLE").length,
+            rented: properties.filter(p => p.status === "RENTED").length,
+            sold: properties.filter(p => p.status === "SOLD").length,
+            underMaintenance: properties.filter(p => p.status === "UNDER_MAINTENANCE").length,
         };
 
         // Calculate rentals stats
-        const rentals = data.rentals || [];
+        const rentals = await prisma.rental.findMany();
         const rentalsStats = {
             total: rentals.length,
-            paid: rentals.filter(r => r.paymentStatus === "paid").length,
-            overdue: rentals.filter(r => r.paymentStatus === "overdue").length,
-            unpaid: rentals.filter(r => r.paymentStatus === "unpaid").length,
-            partiallyPaid: rentals.filter(r => r.paymentStatus === "partially_paid").length,
+            paid: rentals.filter(r => r.paymentStatus === "PAID").length,
+            overdue: rentals.filter(r => r.paymentStatus === "OVERDUE").length,
+            unpaid: rentals.filter(r => r.paymentStatus === "UNPAID").length,
+            partiallyPaid: rentals.filter(r => r.paymentStatus === "PARTIALLY_PAID").length,
         };
 
-        // Calculate previous period for comparison (same duration before start date)
+        // Calculate previous period for comparison
         let prevRevenue = 0;
         let prevExpenses = 0;
 
@@ -116,20 +114,20 @@ export async function GET(request: NextRequest) {
             const prevStartDate = new Date(startDate);
             prevStartDate.setDate(prevStartDate.getDate() - periodDays);
 
-            const prevTransactions = (data.receipts || []).filter(t => {
-                const txDate = new Date(t.date);
-                return txDate >= prevStartDate && txDate < startDate;
+            const prevTransactions = await prisma.transaction.findMany({
+                where: {
+                    date: {
+                        gte: prevStartDate,
+                        lt: startDate,
+                    },
+                },
             });
 
             prevTransactions.forEach(t => {
-                if ('category' in t) {
-                    if (t.category === "income") {
-                        prevRevenue += t.amount || 0;
-                    } else if (t.category === "expense") {
-                        prevExpenses += t.amount || 0;
-                    }
-                } else {
+                if (t.category === "INCOME") {
                     prevRevenue += t.amount || 0;
+                } else if (t.category === "EXPENSE") {
+                    prevExpenses += t.amount || 0;
                 }
             });
         }
