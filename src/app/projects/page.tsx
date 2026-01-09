@@ -7,7 +7,7 @@ import { Button, DataTable, Column, Modal, Input, Textarea, Select, Badge, useTo
 import { useProjectsStore } from "@/stores/dataStores";
 import type { Project } from "@/types";
 import { Plus, FolderKanban, TrendingUp } from "lucide-react";
-import { formatCurrency, normalizeStatus } from "@/lib/utils";
+import { formatCurrency, formatDate, normalizeStatus } from "@/lib/utils";
 
 export default function ProjectsPage() {
     const { t } = useTranslation();
@@ -108,7 +108,7 @@ export default function ProjectsPage() {
         {
             key: "timeline",
             label: t("projects.timeline"),
-            render: (item) => `${item.startDate} - ${item.endDate}`,
+            render: (item) => `${formatDate(item.startDate)} - ${formatDate(item.endDate)}`,
         },
     ];
 
