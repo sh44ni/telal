@@ -268,7 +268,10 @@ export default function RentalsPage() {
     };
 
     const tenantOptions = customers
-        .filter(c => c.type === "tenant" || c.type === "lead")
+        .filter(c => {
+            const normalizedType = normalizeStatus(c.type);
+            return normalizedType === "tenant" || normalizedType === "lead";
+        })
         .map(c => ({ value: c.id, label: c.name }));
 
     const propertyOptions = properties

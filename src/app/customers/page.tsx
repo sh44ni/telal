@@ -7,7 +7,7 @@ import { Button, DataTable, Column, Modal, Input, Textarea, Select, Badge, Tabs,
 import { useCustomersStore, useRentalsStore, usePropertiesStore } from "@/stores/dataStores";
 import type { Customer, Transaction, Property } from "@/types";
 import { Plus, Eye, Edit, Trash2 } from "lucide-react";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, normalizeStatus } from "@/lib/utils";
 
 export default function CustomersPage() {
     const { t } = useTranslation();
@@ -60,15 +60,15 @@ export default function CustomersPage() {
 
     const tabs = [
         { id: "all", label: t("common.all"), count: customers.length },
-        { id: "tenant", label: t("customers.tenant"), count: customers.filter(c => c.type === "tenant").length },
-        { id: "buyer", label: t("customers.buyer"), count: customers.filter(c => c.type === "buyer").length },
-        { id: "lead", label: t("customers.lead"), count: customers.filter(c => c.type === "lead").length },
-        { id: "owner", label: t("customers.owner"), count: customers.filter(c => c.type === "owner").length },
+        { id: "tenant", label: t("customers.tenant"), count: customers.filter(c => normalizeStatus(c.type) === "tenant").length },
+        { id: "buyer", label: t("customers.buyer"), count: customers.filter(c => normalizeStatus(c.type) === "buyer").length },
+        { id: "lead", label: t("customers.lead"), count: customers.filter(c => normalizeStatus(c.type) === "lead").length },
+        { id: "owner", label: t("customers.owner"), count: customers.filter(c => normalizeStatus(c.type) === "owner").length },
     ];
 
     const filteredCustomers = activeTab === "all"
         ? customers
-        : customers.filter(c => c.type === activeTab);
+        : customers.filter(c => normalizeStatus(c.type) === activeTab);
 
     const columns: Column<Customer>[] = [
         { key: "customerId", label: "Customer ID", sortable: true },
@@ -77,13 +77,16 @@ export default function CustomersPage() {
             key: "type",
             label: t("customers.customerType"),
             render: (item) => {
+                const normalizedType = normalizeStatus(item.type);
                 const variants: Record<string, "success" | "warning" | "secondary" | "default"> = {
                     tenant: "success",
                     buyer: "default",
                     lead: "warning",
                     owner: "secondary",
                 };
-                return <Badge variant={variants[item.type]}>{t(`customers.${item.type}`)}</Badge>;
+                return <Badge variant={variants[normalizedType] || variants[item.type] || "default"}>
+                    {t(`customers.${normalizedType}`) || item.type}
+                </Badge>;
             },
         },
         { key: "email", label: t("common.email") },
@@ -130,7 +133,7 @@ export default function CustomersPage() {
             setEditingCustomer(customer);
             setFormData({
                 name: customer.name,
-                type: customer.type,
+                type: normalizeStatus(customer.type) || customer.type,
                 email: customer.email,
                 phone: customer.phone,
                 alternatePhone: customer.alternatePhone || "",
