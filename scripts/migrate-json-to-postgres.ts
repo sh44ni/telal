@@ -11,7 +11,7 @@
  * 4. Run this script: npx tsx scripts/migrate-json-to-postgres.ts
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, ProjectStatus, PropertyType, PropertyStatus, CustomerType, PaymentStatus, Role, PaymentMethod, TransactionCategory } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
 
@@ -21,79 +21,82 @@ const prisma = new PrismaClient();
 const DB_PATH = path.join(process.cwd(), 'data', 'db.json');
 
 // Helper function to convert status strings
-function convertProjectStatus(status: string): string {
-  const statusMap: Record<string, string> = {
-    'in_progress': 'IN_PROGRESS',
-    'completed': 'COMPLETED',
-    'on_hold': 'ON_HOLD',
-    'cancelled': 'CANCELLED',
+function convertProjectStatus(status: string): ProjectStatus {
+  const statusMap: Record<string, ProjectStatus> = {
+    'in_progress': ProjectStatus.IN_PROGRESS,
+    'completed': ProjectStatus.COMPLETED,
+    'on_hold': ProjectStatus.ON_HOLD,
+    'cancelled': ProjectStatus.CANCELLED,
   };
-  return statusMap[status] || 'IN_PROGRESS';
+  return statusMap[status] || ProjectStatus.IN_PROGRESS;
 }
 
-function convertPropertyType(type: string): string {
-  const typeMap: Record<string, string> = {
-    'apartment': 'APARTMENT',
-    'villa': 'VILLA',
-    'shop': 'SHOP',
-    'office': 'OFFICE',
-    'land': 'LAND',
-    'warehouse': 'WAREHOUSE',
+function convertPropertyType(type: string): PropertyType {
+  const typeMap: Record<string, PropertyType> = {
+    'apartment': PropertyType.APARTMENT,
+    'villa': PropertyType.VILLA,
+    'shop': PropertyType.SHOP,
+    'office': PropertyType.OFFICE,
+    'land': PropertyType.LAND,
+    'warehouse': PropertyType.WAREHOUSE,
   };
-  return typeMap[type] || 'APARTMENT';
+  return typeMap[type] || PropertyType.APARTMENT;
 }
 
-function convertPropertyStatus(status: string): string {
-  const statusMap: Record<string, string> = {
-    'available': 'AVAILABLE',
-    'rented': 'RENTED',
-    'sold': 'SOLD',
-    'under_maintenance': 'UNDER_MAINTENANCE',
+function convertPropertyStatus(status: string): PropertyStatus {
+  const statusMap: Record<string, PropertyStatus> = {
+    'available': PropertyStatus.AVAILABLE,
+    'rented': PropertyStatus.RENTED,
+    'sold': PropertyStatus.SOLD,
+    'under_maintenance': PropertyStatus.UNDER_MAINTENANCE,
   };
-  return statusMap[status] || 'AVAILABLE';
+  return statusMap[status] || PropertyStatus.AVAILABLE;
 }
 
-function convertCustomerType(type: string): string {
-  const typeMap: Record<string, string> = {
-    'buyer': 'BUYER',
-    'tenant': 'TENANT',
-    'lead': 'LEAD',
-    'owner': 'OWNER',
+function convertCustomerType(type: string): CustomerType {
+  const typeMap: Record<string, CustomerType> = {
+    'buyer': CustomerType.BUYER,
+    'tenant': CustomerType.TENANT,
+    'lead': CustomerType.LEAD,
+    'owner': CustomerType.OWNER,
   };
-  return typeMap[type] || 'LEAD';
+  return typeMap[type] || CustomerType.LEAD;
 }
 
-function convertPaymentStatus(status: string): string {
-  const statusMap: Record<string, string> = {
-    'paid': 'PAID',
-    'unpaid': 'UNPAID',
-    'partially_paid': 'PARTIALLY_PAID',
-    'overdue': 'OVERDUE',
+function convertPaymentStatus(status: string): PaymentStatus {
+  const statusMap: Record<string, PaymentStatus> = {
+    'paid': PaymentStatus.PAID,
+    'unpaid': PaymentStatus.UNPAID,
+    'partially_paid': PaymentStatus.PARTIALLY_PAID,
+    'overdue': PaymentStatus.OVERDUE,
   };
-  return statusMap[status] || 'UNPAID';
+  return statusMap[status] || PaymentStatus.UNPAID;
 }
 
-function convertRole(role: string): string {
-  const roleMap: Record<string, string> = {
-    'admin': 'ADMIN',
-    'manager': 'MANAGER',
-    'user': 'USER',
+function convertRole(role: string): Role {
+  const roleMap: Record<string, Role> = {
+    'admin': Role.ADMIN,
+    'manager': Role.MANAGER,
+    'user': Role.USER,
   };
-  return roleMap[role] || 'USER';
+  return roleMap[role] || Role.USER;
 }
 
-function convertPaymentMethod(method: string): string {
-  const methodMap: Record<string, string> = {
-    'cash': 'CASH',
-    'bank_transfer': 'BANK_TRANSFER',
-    'cheque': 'CHEQUE',
-    'card': 'CARD',
+function convertPaymentMethod(method: string): PaymentMethod {
+  const methodMap: Record<string, PaymentMethod> = {
+    'cash': PaymentMethod.CASH,
+    'bank_transfer': PaymentMethod.BANK_TRANSFER,
+    'cheque': PaymentMethod.CHEQUE,
+    'card': PaymentMethod.CARD,
   };
-  return methodMap[method] || 'CASH';
+  return methodMap[method] || PaymentMethod.CASH;
 }
 
-function convertTransactionCategory(category: string): string {
-  return category.toUpperCase();
+function convertTransactionCategory(category: string): TransactionCategory {
+  const categoryUpper = category.toUpperCase();
+  if (categoryUpper === 'INCOME') return TransactionCategory.INCOME;
+  if (categoryUpper === 'EXPENSE') return TransactionCategory.EXPENSE;
+  return TransactionCategory.EXPENSE; // default
 }
 
 async function migrate() {
