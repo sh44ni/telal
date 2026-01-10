@@ -276,6 +276,7 @@ export interface SaleContract {
 
     // Seller (First Party)
     sellerId: string;
+    sellerCivilId?: string; // Manual entry
     sellerName: string;
     sellerCR?: string;
     sellerNationality: string;
@@ -284,6 +285,7 @@ export interface SaleContract {
 
     // Buyer (Second Party)
     buyerId: string;
+    buyerCivilId?: string; // Manual entry
     buyerName: string;
     buyerCR?: string;
     buyerNationality: string;

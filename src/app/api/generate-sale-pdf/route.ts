@@ -359,8 +359,8 @@ function generateHTML(contract: SaleContract, logoDataUrl: string): string {
                 </thead>
                 <tbody>
                     <tr>
-                        <td>${contract.buyerId || '-'}</td>
-                        <td>${contract.sellerId || '-'}</td>
+                        <td>${contract.buyerCivilId || contract.buyerId || '-'}</td>
+                        <td>${contract.sellerCivilId || contract.sellerId || '-'}</td>
                         <td>التعريف</td>
                     </tr>
                     <tr>

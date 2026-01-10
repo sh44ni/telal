@@ -446,13 +446,13 @@ export default function ContractsPage() {
         if (contract) {
             setEditingSaleContract(contract);
             setSaleFormData({
-                sellerId: contract.sellerId || "",
+                sellerId: contract.sellerCivilId || contract.sellerId || "",
                 sellerName: contract.sellerName || "",
                 sellerCR: contract.sellerCR || "",
                 sellerNationality: contract.sellerNationality || "",
                 sellerAddress: contract.sellerAddress || "",
                 sellerPhone: contract.sellerPhone || "",
-                buyerId: contract.buyerId || "",
+                buyerId: contract.buyerCivilId || contract.buyerId || "",
                 buyerName: contract.buyerName || "",
                 buyerCR: contract.buyerCR || "",
                 buyerNationality: contract.buyerNationality || "",

@@ -61,14 +61,16 @@ export async function POST(request: NextRequest) {
                 type: 'SALE',
                 status,
                 // Seller - use provided ID or null
-                sellerId: body.sellerId && body.sellerId.length > 0 ? body.sellerId : null,
+                sellerId: undefined, // undefined REMOVES it from the query
+                sellerCivilId: body.sellerId, // Store the input ID here
                 sellerName: body.sellerName,
                 sellerCR: body.sellerCR || null,
                 sellerNationality: body.sellerNationality || "",
                 sellerAddress: body.sellerAddress || "",
                 sellerPhone: body.sellerPhone || "",
                 // Buyer - use provided ID or null
-                buyerId: body.buyerId && body.buyerId.length > 0 ? body.buyerId : null,
+                buyerId: undefined, // undefined REMOVES it from the query
+                buyerCivilId: body.buyerId, // Store the input ID here
                 buyerName: body.buyerName,
                 buyerCR: body.buyerCR || null,
                 buyerNationality: body.buyerNationality || "",

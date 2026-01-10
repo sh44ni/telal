@@ -360,6 +360,7 @@ model SaleContract {
 
   // Seller (First Party)
   sellerId                String?
+  sellerCivilId           String?        // NEW: For manual entry
   sellerName              String
   sellerCR                String?
   sellerNationality       String
@@ -368,6 +369,7 @@ model SaleContract {
 
   // Buyer (Second Party)
   buyerId                 String?
+  buyerCivilId            String?        // NEW: For manual entry
   buyerName               String
   buyerCR                 String?
   buyerNationality        String
