@@ -284,6 +284,8 @@ export default function DocumentsPage() {
                     data={filteredDocuments}
                     columns={columns}
                     keyField="id"
+                    loading={loading}
+                    loadingLabel="Loading documents..."
                     onDelete={handleDeleteClick}
                     actions={(item) => (
                         <div className="flex items-center gap-1">

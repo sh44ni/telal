@@ -255,6 +255,8 @@ export default function ProjectsPage() {
                 data={projects}
                 columns={columns}
                 keyField="id"
+                loading={projects.length === 0}
+                loadingLabel="Loading projects..."
                 onEdit={handleOpenModal}
                 onDelete={handleDeleteClick}
                 customActions={(item) => (

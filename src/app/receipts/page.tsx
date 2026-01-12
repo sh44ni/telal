@@ -241,6 +241,7 @@ export default function ReceiptsPage() {
                 columns={columns}
                 keyField="id"
                 loading={loading}
+                loadingLabel="Loading receipts..."
                 onDelete={handleDelete}
                 actions={(item) => (
                     <div className="flex items-center gap-1">

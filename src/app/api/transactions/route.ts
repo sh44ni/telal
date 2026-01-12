@@ -58,7 +58,13 @@ export async function GET(request: NextRequest) {
             orderBy: { date: 'desc' },
         });
 
-        return NextResponse.json(transactions);
+        // Transform category to lowercase for frontend compatibility
+        const transformedTransactions = transactions.map(t => ({
+            ...t,
+            category: t.category.toLowerCase(),
+        }));
+
+        return NextResponse.json(transformedTransactions);
     } catch (error) {
         console.error("Error fetching transactions:", error);
         return NextResponse.json({ error: "Failed to fetch transactions" }, { status: 500 });
@@ -104,7 +110,7 @@ export async function POST(request: NextRequest) {
             paidBy = customer?.name || "Unknown";
         }
 
-        // Convert category and payment method to uppercase enum values
+        // Convert category to uppercase for Prisma enum (INCOME/EXPENSE)
         const category = body.category ? body.category.toUpperCase() : 'INCOME';
         const paymentMethod = body.paymentMethod ? body.paymentMethod.toUpperCase() : 'CASH';
 
@@ -217,7 +223,13 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        return NextResponse.json(newTransaction, { status: 201 });
+        // Transform category to lowercase for frontend
+        const responseTransaction = {
+            ...newTransaction,
+            category: newTransaction.category.toLowerCase(),
+        };
+
+        return NextResponse.json(responseTransaction, { status: 201 });
     } catch (error) {
         console.error("Error creating transaction:", error);
         return NextResponse.json({ error: "Failed to create transaction" }, { status: 500 });

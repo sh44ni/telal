@@ -346,6 +346,7 @@ export default function AccountsPage() {
                     columns={columns}
                     keyField="id"
                     loading={loading}
+                    loadingLabel="Loading transactions..."
                     onDelete={handleDelete}
                     actions={(item) => (
                         <div className="flex items-center gap-1">

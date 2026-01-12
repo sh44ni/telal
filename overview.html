@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telal Al Bidaya - Real Estate Management System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #c9a962;
+            --primary-dark: #b8973f;
+            --bg-dark: #0a0a0a;
+            --bg-card: #111111;
+            --bg-card-hover: #1a1a1a;
+            --text: #ffffff;
+            --text-muted: #888888;
+            --border: #222222;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 80px 24px;
+            background: linear-gradient(180deg, var(--bg-dark) 0%, #0f0f0f 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at center, rgba(201, 169, 98, 0.03) 0%, transparent 50%);
+            animation: pulse 8s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 1; }
+        }
+
+        .logo {
+            width: 120px;
+            height: 120px;
+            margin-bottom: 32px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border-radius: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            font-weight: 800;
+            color: var(--bg-dark);
+            box-shadow: 0 20px 60px rgba(201, 169, 98, 0.3);
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero h1 {
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: 800;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, var(--text) 0%, var(--primary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero .subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin-bottom: 48px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero .arabic {
+            font-size: 1.5rem;
+            color: var(--primary);
+            margin-bottom: 8px;
+            direction: rtl;
+            position: relative;
+            z-index: 1;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 16px 32px;
+            background: var(--primary);
+            color: var(--bg-dark);
+            font-weight: 600;
+            font-size: 1rem;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 1;
+        }
+
+        .btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(201, 169, 98, 0.4);
+        }
+
+        /* Features Section */
+        .features {
+            padding: 120px 0;
+            background: var(--bg-dark);
+        }
+
+        .section-title {
+            text-align: center;
+            margin-bottom: 64px;
+        }
+
+        .section-title h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .section-title p {
+            color: var(--text-muted);
+            font-size: 1.125rem;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 32px;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--primary);
+            transform: translateY(-4px);
+        }
+
+        .feature-icon {
+            width: 56px;
+            height: 56px;
+            background: rgba(201, 169, 98, 0.1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .feature-card h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .feature-card p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        /* Modules Section */
+        .modules {
+            padding: 120px 0;
+            background: linear-gradient(180deg, #0f0f0f 0%, var(--bg-dark) 100%);
+        }
+
+        .modules-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+
+        @media (max-width: 900px) {
+            .modules-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 500px) {
+            .modules-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .module-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 24px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .module-item:hover {
+            border-color: var(--primary);
+        }
+
+        .module-item .icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        .module-item h4 {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .module-item p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* Tech Stack */
+        .tech {
+            padding: 80px 0;
+            background: var(--bg-dark);
+            border-top: 1px solid var(--border);
+        }
+
+        .tech-list {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 32px;
+        }
+
+        .tech-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 24px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .tech-item span {
+            font-weight: 500;
+        }
+
+        /* Footer */
+        footer {
+            padding: 48px 0;
+            text-align: center;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+        }
+
+        footer .brand {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        /* Stats */
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 64px;
+            margin-top: 48px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        @media (max-width: 600px) {
+            .stats {
+                flex-direction: column;
+                gap: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="logo">ت</div>
+        <p class="arabic">تلال البداية</p>
+        <h1>Telal Al Bidaya</h1>
+        <p class="subtitle">
+            A comprehensive real estate management system designed for property management companies in Oman. 
+            Manage projects, properties, rentals, contracts, and finances — all in one place.
+        </p>
+        <a href="https://telalalbidaya.cloud" class="btn" target="_blank">
+            <span>🚀</span> Launch Application
+        </a>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-value">8</div>
+                <div class="stat-label">Core Modules</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">100%</div>
+                <div class="stat-label">Bilingual (AR/EN)</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">PDF</div>
+                <div class="stat-label">Auto-Generation</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <div class="container">
+            <div class="section-title">
+                <h2>Key Features</h2>
+                <p>Everything you need to manage real estate operations efficiently</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🏗️</div>
+                    <h3>Project Management</h3>
+                    <p>Track construction projects with budgets, timelines, progress percentages, and cost breakdowns.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🏠</div>
+                    <h3>Property Portfolio</h3>
+                    <p>Manage apartments, villas, shops, offices, and land with detailed specifications and status tracking.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📋</div>
+                    <h3>Contract Generation</h3>
+                    <p>Generate rental and sale contracts as professional A4 PDFs with Arabic/English support.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">💰</div>
+                    <h3>Financial Tracking</h3>
+                    <p>Record income and expenses, generate receipts, and view revenue vs expenses charts.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">👥</div>
+                    <h3>Customer Management</h3>
+                    <p>Manage tenants, buyers, leads, and property owners with complete profile information.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📧</div>
+                    <h3>Payment Reminders</h3>
+                    <p>Automatic email reminders for overdue rent payments with one-click sending.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Modules Section -->
+    <section class="modules">
+        <div class="container">
+            <div class="section-title">
+                <h2>Application Modules</h2>
+                <p>Complete suite of tools for real estate operations</p>
+            </div>
+            <div class="modules-grid">
+                <div class="module-item">
+                    <div class="icon">📊</div>
+                    <h4>Dashboard</h4>
+                    <p>Overview & Analytics</p>
+                </div>
+                <div class="module-item">
+                    <div class="icon">📁</div>
+                    <h4>Projects</h4>
+                    <p>Construction Tracking</p>
+                </div>
+                <div class="module-item">
+                    <div class="icon">🏢</div>
+                    <h4>Properties</h4>
+                    <p>Portfolio Management</p>
+                </div>
+                <div class="module-item">
+                    <div class="icon">👤</div>
+                    <h4>Customers</h4>
+                    <p>CRM & Contacts</p>
+                </div>
+                <div class="module-item">
+                    <div class="icon">🔑</div>
+                    <h4>Rentals</h4>
+                    <p>Lease Management</p>
+                </div>
+                <div class="module-item">
+                    <div class="icon">📝</div>
+                    <h4>Contracts</h4>
+                    <p>Rental & Sale Agreements</p>
+                </div>
+                <div class="module-item">
+                    <div class="icon">💵</div>
+                    <h4>Accounts</h4>
+                    <p>Income & Expenses</p>
+                </div>
+                <div class="module-item">
+                    <div class="icon">📄</div>
+                    <h4>Documents</h4>
+                    <p>File Storage</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tech Stack -->
+    <section class="tech">
+        <div class="container">
+            <div class="section-title">
+                <h2>Built With</h2>
+                <p>Modern, reliable technology stack</p>
+            </div>
+            <div class="tech-list">
+                <div class="tech-item">
+                    <span>⚡</span>
+                    <span>Next.js 16</span>
+                </div>
+                <div class="tech-item">
+                    <span>⚛️</span>
+                    <span>React 19</span>
+                </div>
+                <div class="tech-item">
+                    <span>🎨</span>
+                    <span>Tailwind CSS</span>
+                </div>
+                <div class="tech-item">
+                    <span>🗄️</span>
+                    <span>PostgreSQL</span>
+                </div>
+                <div class="tech-item">
+                    <span>🔷</span>
+                    <span>Prisma ORM</span>
+                </div>
+                <div class="tech-item">
+                    <span>🔐</span>
+                    <span>NextAuth.js</span>
+                </div>
+                <div class="tech-item">
+                    <span>📑</span>
+                    <span>Puppeteer PDF</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>© 2026 <span class="brand">Telal Al Bidaya</span> — Real Estate Management System</p>
+            <p style="margin-top: 8px; font-size: 0.875rem;">Developed for property management in Oman 🇴🇲</p>
+        </div>
+    </footer>
+</body>
+</html>

@@ -294,6 +294,8 @@ export default function CustomersPage() {
                     data={filteredCustomers}
                     columns={columns}
                     keyField="id"
+                    loading={customers.length === 0}
+                    loadingLabel="Loading customers..."
                     onEdit={handleOpenModal}
                     onDelete={handleDeleteClick}
                     actions={(item) => (

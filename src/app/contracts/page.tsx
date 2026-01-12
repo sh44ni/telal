@@ -654,6 +654,8 @@ export default function ContractsPage() {
                     data={filteredContracts}
                     columns={columns}
                     keyField="id"
+                    loading={loading}
+                    loadingLabel="Loading contracts..."
                     onEdit={(item) => {
                         if (item.contractType === 'rental') {
                             handleOpenModal(item as RentalContract);

@@ -310,6 +310,8 @@ export default function RentalsPage() {
                 data={rentals}
                 columns={columns}
                 keyField="id"
+                loading={rentals.length === 0}
+                loadingLabel="Loading rentals..."
                 actions={(item) => (
                     <div className="relative" ref={activeMenu === item.id ? menuRef : null}>
                         <button

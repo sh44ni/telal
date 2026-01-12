@@ -256,6 +256,8 @@ export default function PropertiesPage() {
                         data={filteredProperties}
                         columns={columns}
                         keyField="id"
+                        loading={properties.length === 0}
+                        loadingLabel="Loading properties..."
                         onEdit={handleOpenModal}
                         onDelete={handleDeleteClick}
                         actions={(item) => (

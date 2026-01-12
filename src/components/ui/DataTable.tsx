@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { ChevronUp, ChevronDown, Search, MoreHorizontal, Edit, Trash2, Eye } from "lucide-react";
 import { Button } from "./Button";
+import { LoadingProgress } from "./LoadingProgress";
 
 export interface Column<T> {
     key: string;
@@ -24,6 +25,7 @@ interface DataTableProps<T> {
     onEdit?: (item: T) => void;
     onDelete?: (item: T) => void;
     loading?: boolean;
+    loadingLabel?: string;
     emptyMessage?: string;
     actions?: (item: T) => React.ReactNode;
     customActions?: (item: T) => React.ReactNode;
@@ -40,6 +42,7 @@ export function DataTable<T extends Record<string, any>>({
     onEdit,
     onDelete,
     loading = false,
+    loadingLabel,
     emptyMessage,
     actions,
     customActions,
@@ -154,21 +157,15 @@ export function DataTable<T extends Record<string, any>>({
                     </thead>
                     <tbody>
                         {loading ? (
-                            // Loading state
-                            Array.from({ length: 5 }).map((_, i) => (
-                                <tr key={i}>
-                                    {columns.map((col) => (
-                                        <td key={col.key}>
-                                            <div className="h-4 bg-muted animate-pulse w-3/4" />
-                                        </td>
-                                    ))}
-                                    {hasActions && (
-                                        <td>
-                                            <div className="h-4 bg-muted animate-pulse w-12 mx-auto" />
-                                        </td>
-                                    )}
-                                </tr>
-                            ))
+                            // Loading state with progress indicator
+                            <tr>
+                                <td
+                                    colSpan={columns.length + (hasActions ? 1 : 0)}
+                                    className="p-0"
+                                >
+                                    <LoadingProgress label={loadingLabel} />
+                                </td>
+                            </tr>
                         ) : processedData.length === 0 ? (
                             // Empty state
                             <tr>
