@@ -32,7 +32,13 @@ export async function GET(request: NextRequest) {
             orderBy: { createdAt: 'desc' },
         });
 
-        return NextResponse.json(projects);
+        return NextResponse.json(projects, {
+            headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0',
+            },
+        });
     } catch (error) {
         console.error("Error fetching projects:", error);
         return NextResponse.json({ error: "Failed to fetch projects" }, { status: 500 });

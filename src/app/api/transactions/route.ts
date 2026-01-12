@@ -64,7 +64,13 @@ export async function GET(request: NextRequest) {
             category: t.category.toLowerCase(),
         }));
 
-        return NextResponse.json(transformedTransactions);
+        return NextResponse.json(transformedTransactions, {
+            headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0',
+            },
+        });
     } catch (error) {
         console.error("Error fetching transactions:", error);
         return NextResponse.json({ error: "Failed to fetch transactions" }, { status: 500 });

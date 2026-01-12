@@ -35,7 +35,13 @@ export async function GET() {
             orderBy: { createdAt: 'desc' },
         });
 
-        return NextResponse.json(rentals);
+        return NextResponse.json(rentals, {
+            headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0',
+            },
+        });
     } catch (error) {
         console.error("Error fetching rentals:", error);
         return NextResponse.json({ error: "Failed to fetch rentals" }, { status: 500 });

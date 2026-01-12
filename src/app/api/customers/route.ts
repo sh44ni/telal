@@ -44,7 +44,13 @@ export async function GET(request: NextRequest) {
             orderBy: { createdAt: 'desc' },
         });
 
-        return NextResponse.json(customers);
+        return NextResponse.json(customers, {
+            headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0',
+            },
+        });
     } catch (error) {
         console.error("Error fetching customers:", error);
         return NextResponse.json({ error: "Failed to fetch customers" }, { status: 500 });
